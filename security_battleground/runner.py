@@ -66,6 +66,7 @@ class BattlegroundReport:
     fraud_detection_accuracy: float
     injection_detection_rate: float
     gate_m_block_rate: float
+    supply_chain_integrity_rate: float
     false_positive_rate: float
     average_latency_ms: float
     overall_pass_rate: float
@@ -109,6 +110,11 @@ def run_gate_m_arena() -> list:
     return gate_m_arena.run(_ATTACKS_DIR / "gate_m_attacks.json")
 
 
+def run_supply_chain_arena() -> list:
+    from security_battleground.arenas import supply_chain_arena
+    return supply_chain_arena.run(_ATTACKS_DIR)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Scoreboard printer
 # ─────────────────────────────────────────────────────────────────────────────
@@ -116,6 +122,7 @@ def print_scoreboard(
     fraud_results: list,
     inj_results: list,
     gate_results: list,
+    sc_results: list | None = None,
 ) -> None:
     _banner("AI SECURITY BATTLEGROUND RESULTS")
 
@@ -186,8 +193,35 @@ def print_scoreboard(
             f"{r.actual_result:<10} {layer:<6} {mark}"
         )
 
+    # ── Supply Chain Arena ───────────────────────────────────────
+    if sc_results:
+        _section("Supply Chain Arena", 62)
+        sc_attacks = [r for r in sc_results if r.expected_result == "REJECTED"]
+        sc_safe    = [r for r in sc_results if r.expected_result == "APPROVED"]
+        sc_blocked = sum(1 for r in sc_attacks if r.pass_or_fail == "PASS")
+        sc_safe_ok = sum(1 for r in sc_safe if r.pass_or_fail == "PASS")
+        sc_latencies = [r.latency_ms for r in sc_results if r.latency_ms > 0]
+
+        print(f"  {sc_blocked} / {len(sc_attacks)} supply-chain attacks blocked")
+        if sc_safe:
+            print(f"  {sc_safe_ok} / {len(sc_safe)} safe patches approved correctly")
+        if sc_latencies:
+            print(f"  avg scan time: {sum(sc_latencies)/len(sc_latencies):.2f} ms")
+
+        print()
+        print(f"  {'ID':<8} {'TYPE':<30} {'EXPECTED':<10} {'ACTUAL':<10} {'LAYER':<6} {'CHECK':<8} {'RESULT'}")
+        print(f"  {'─'*8} {'─'*30} {'─'*10} {'─'*10} {'─'*6} {'─'*8} {'─'*6}")
+        for r in sc_results:
+            mark  = "✓" if r.pass_or_fail == "PASS" else "✗"
+            layer = str(r.layer_failed) if r.layer_failed else "-"
+            check = getattr(r, "supply_chain_check", "-")
+            print(
+                f"  {r.test_id:<8} {r.attack_type[:30]:<30} {r.expected_result:<10} "
+                f"{r.actual_result:<10} {layer:<6} {check:<8} {mark}"
+            )
+
     # ── Overall Summary ───────────────────────────────────────────
-    all_results = fraud_results + inj_results + gate_results
+    all_results = fraud_results + inj_results + gate_results + (sc_results or [])
     total_passed = sum(1 for r in all_results if r.pass_or_fail == "PASS")
     all_latencies = [getattr(r, "latency_ms", 0) for r in all_results if getattr(r, "latency_ms", 0) > 0]
 
@@ -197,6 +231,12 @@ def print_scoreboard(
     overall    = _safe_pct(total_passed, len(all_results))
     avg_lat    = sum(all_latencies) / len(all_latencies) if all_latencies else 0.0
 
+    sc_attacks_all = [r for r in (sc_results or []) if r.expected_result == "REJECTED"] if sc_results else []
+    sc_rate = _safe_pct(
+        sum(1 for r in sc_attacks_all if r.pass_or_fail == "PASS"),
+        len(sc_attacks_all),
+    ) if sc_attacks_all else 0.0
+
     print()
     print("═" * 62)
     print("  SUMMARY")
@@ -204,6 +244,8 @@ def print_scoreboard(
     print(f"  fraud_detection_accuracy  : {fraud_acc:.1f}%")
     print(f"  injection_detection_rate  : {inj_rate:.1f}%")
     print(f"  gate_m_block_rate         : {gate_rate:.1f}%")
+    if sc_results:
+        print(f"  supply_chain_integrity    : {sc_rate:.1f}%")
     print(f"  average_latency_ms        : {avg_lat:.1f}")
     print(f"  overall_pass_rate         : {overall:.1f}%  ({total_passed}/{len(all_results)} tests passed)")
     print("═" * 62)
@@ -228,10 +270,11 @@ def write_report(
     inj_results: list,
     gate_results: list,
     arenas_run: list[str],
+    sc_results: list | None = None,
 ) -> Path:
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-    all_results = fraud_results + inj_results + gate_results
+    all_results = fraud_results + inj_results + gate_results + (sc_results or [])
     total_passed = sum(1 for r in all_results if r.pass_or_fail == "PASS")
     all_latencies = [getattr(r, "latency_ms", 0) for r in all_results if getattr(r, "latency_ms", 0) > 0]
 
@@ -239,6 +282,7 @@ def write_report(
     fd_clean    = [r for r in fraud_results if r.expected_verdict == "ALLOW"]
     inj_attacks = [r for r in inj_results if r.expected_result == "DETECTED"]
     gate_unsafe = [r for r in gate_results if r.expected_result == "REJECTED"]
+    sc_attacks  = [r for r in (sc_results or []) if r.expected_result == "REJECTED"]
 
     report = BattlegroundReport(
         run_id=f"bgrd-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
@@ -253,6 +297,9 @@ def write_report(
         ),
         gate_m_block_rate=_safe_pct(
             sum(1 for r in gate_unsafe if r.pass_or_fail == "PASS"), len(gate_unsafe)
+        ),
+        supply_chain_integrity_rate=_safe_pct(
+            sum(1 for r in sc_attacks if r.pass_or_fail == "PASS"), len(sc_attacks)
         ),
         false_positive_rate=_safe_pct(
             sum(1 for r in fd_clean if r.pass_or_fail == "FAIL"), len(fd_clean)
@@ -302,7 +349,22 @@ def write_report(
                 ),
                 errors=sum(1 for r in gate_results if r.error),
             )),
-        ],
+        ] + ([
+            asdict(ArenaSummary(
+                arena="supply_chain",
+                total_tests=len(sc_results),
+                passed=sum(1 for r in sc_results if r.pass_or_fail == "PASS"),
+                failed=sum(1 for r in sc_results if r.pass_or_fail == "FAIL"),
+                accuracy_pct=_safe_pct(
+                    sum(1 for r in sc_results if r.pass_or_fail == "PASS"),
+                    len(sc_results),
+                ),
+                average_latency_ms=round(
+                    sum(r.latency_ms for r in sc_results) / max(len(sc_results), 1), 2
+                ),
+                errors=sum(1 for r in sc_results if r.error),
+            ))
+        ] if sc_results else []),
     )
 
     report_path = _REPORT_DIR / "battleground_report.json"
@@ -320,7 +382,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="AI Security Battleground runner")
     parser.add_argument(
         "--arena",
-        choices=["fraud", "injection", "gate_m", "all"],
+        choices=["fraud", "injection", "gate_m", "supply_chain", "all"],
         default="all",
         help="Which arena(s) to run (default: all)",
     )
@@ -335,6 +397,7 @@ def main() -> None:
     fraud_results: list = []
     inj_results:   list = []
     gate_results:  list = []
+    sc_results:    list = []
     arenas_run:    list[str] = []
 
     t_start = time.perf_counter()
@@ -354,12 +417,17 @@ def main() -> None:
         gate_results = run_gate_m_arena()
         arenas_run.append("gate_m")
 
+    if args.arena in ("supply_chain", "all"):
+        log.info("━━━  Starting Supply Chain Arena  ━━━")
+        sc_results = run_supply_chain_arena()
+        arenas_run.append("supply_chain")
+
     elapsed = time.perf_counter() - t_start
     log.info("All arenas complete — total time: %.1fs", elapsed)
 
-    print_scoreboard(fraud_results, inj_results, gate_results)
+    print_scoreboard(fraud_results, inj_results, gate_results, sc_results or None)
 
-    report_path = write_report(fraud_results, inj_results, gate_results, arenas_run)
+    report_path = write_report(fraud_results, inj_results, gate_results, arenas_run, sc_results or None)
     print(f"  Full report: {report_path}")
     print()
 
