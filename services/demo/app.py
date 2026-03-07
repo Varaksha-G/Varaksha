@@ -1,309 +1,306 @@
 """
-demo/app.py — Varaksha Streamlit Demo Harness
-==============================================
-Interactive demo for ISEA Phase-III judges.
+services/demo/app.py
+─────────────────────
+Layer 4 + 5: Streamlit Dashboard — Varaksha V2
+"Analyst View" with real-time risk feed, graph visualisation,
+and accessible fraud alert panel.
 
-Shows:
-  1. Send a synthetic (no real PII) transaction through the full pipeline
-  2. Live verdict + risk score + narrative
-  3. Download the signed PDF report
-  4. Architecture diagram + gate signature trail
-
-Run with:
-    streamlit run demo/app.py
-
-Requires:
-  • All agents running (ports 8001–8003) OR pipeline orchestrator on 8000
-  • .env file with OPENAI_API_KEY (or leave blank for template narratives)
-  • pip install -r agents/requirements.txt
+Run:
+    streamlit run services/demo/app.py
 """
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
-import os
+import pathlib
+import random
 import sys
 import time
-from pathlib import Path
 
-import httpx
+import networkx as nx
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
-from dotenv import load_dotenv
 
-load_dotenv()
+# ── Path setup ────────────────────────────────────────────────────────────────
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "services"))
 
-# ─── Config ───────────────────────────────────────────────────────────────────
+from agents.agent03_accessible_alert import (  # noqa: E402
+    FlaggedTransaction,
+    generate_alert,
+)
+from graph.graph_agent import build_demo_graph, run_detection  # noqa: E402
 
-PIPELINE_URL = os.getenv("PIPELINE_URL", "http://127.0.0.1:8000/v1/orchestrate")
-GATEWAY_URL  = os.getenv("GATEWAY_URL",  "http://127.0.0.1:8080/v1/tx")
-REPORTS_DIR  = Path("reports")
-
-# ─── Page setup ───────────────────────────────────────────────────────────────
-
+# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Varaksha — UPI Fraud Detection Demo",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    page_title  = "Varaksha V2 — Fraud Intelligence Dashboard",
+    page_icon   = "🛡️",
+    layout      = "wide",
+    initial_sidebar_state = "expanded",
 )
 
-# Brand CSS
-st.markdown("""
-<style>
-    body { font-family: 'Inter', sans-serif; }
-    .stApp { background-color: #0f0f1a; color: #e5e7eb; }
-    .verdict-block  { background: #1e1b4b; border-left: 4px solid #dc2626; padding: 12px 16px; border-radius: 6px; }
-    .verdict-flag   { background: #1e1b4b; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; }
-    .verdict-allow  { background: #1e1b4b; border-left: 4px solid #16a34a; padding: 12px 16px; border-radius: 6px; }
-    .metric-card    { background: #1a1a2e; padding: 12px; border-radius: 8px; text-align: center; }
-    code { background: #1e293b; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-</style>
-""", unsafe_allow_html=True)
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-# ─── Sidebar ──────────────────────────────────────────────────────────────────
+def _hash(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()[:12]
 
+VERDICT_COLOR = {"ALLOW": "#28a745", "FLAG": "#fd7e14", "BLOCK": "#dc3545"}
+TYPOLOGY_COLOR = {
+    "FAN_OUT": "#e74c3c",
+    "FAN_IN" : "#e67e22",
+    "CYCLE"  : "#9b59b6",
+    "SCATTER": "#3498db",
+}
+
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.image("https://img.shields.io/badge/Varaksha-v0.1.0-7c3aed?style=flat-square")
-    st.markdown("### System Status")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/320px-UPI-Logo-vector.svg.png", width=120)
+    st.title("Varaksha V2")
+    st.caption("Privacy-Preserving UPI Fraud Intelligence")
+    st.divider()
+    st.subheader("⚙️ Demo Controls")
+    auto_refresh   = st.toggle("Auto-refresh feed (3 s)", value=False)
+    n_feed_rows    = st.slider("Feed rows to display", 5, 50, 15)
+    risk_threshold = st.slider("FLAG threshold", 0.30, 0.70, 0.40, 0.05)
+    block_threshold= st.slider("BLOCK threshold", 0.60, 0.95, 0.75, 0.05)
+    st.divider()
+    st.caption("🏛️ Inspired by Nasdaq Verafin + BIS Project Aurora")
 
-    def ping(url: str, label: str) -> None:
-        try:
-            r = httpx.get(url.replace("/v1/tx", "/health").replace("/v1/orchestrate", "/health"), timeout=2.0)
-            st.success(f"✅ {label}")
-        except Exception:
-            st.error(f"❌ {label} (offline)")
+# ── Header ────────────────────────────────────────────────────────────────────
+st.title("🛡️ Varaksha V2 — UPI Fraud Intelligence Dashboard")
+st.caption("Real-time risk cache · Money-mule graph · Accessible multilingual alerts")
 
-    ping(GATEWAY_URL,  "Rust Gateway :8080")
-    ping(f"http://127.0.0.1:8000/health", "Pipeline :8000")
-    ping(f"http://127.0.0.1:8001/health", "Agent 01 :8001")
-    ping(f"http://127.0.0.1:8002/health", "Agent 02 :8002")
-    ping(f"http://127.0.0.1:8003/health", "Agent 03 :8003")
+col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
 
-    st.markdown("---")
-    st.markdown("""
-**Security notes**
-- All UPI IDs → HMAC-SHA256 pseudonyms
-- Amount → Laplace DP noise (ε=1.0)
-- GPS → great-circle km only
-- Ed25519 signatures at every gate
-- SGX: simulation on this hardware
-""")
+# ── Section 1: Real-Time Risk Cache Feed ─────────────────────────────────────
+st.divider()
+st.subheader("📡 Section 1: Real-Time Consortium Risk Cache (Layer 2 — Rust DashMap)")
 
-# ─── Main UI ─────────────────────────────────────────────────────────────────
+st.info(
+    "**Architecture note:** This panel simulates the response stream from the Rust gateway "
+    "(port 8082). In a live deployment, each row below represents one `POST /v1/tx` "
+    "response — sub-5 ms per lookup via DashMap.",
+    icon="ℹ️",
+)
 
-st.title("🛡️ Varaksha — UPI Fraud Detection Demo")
-st.caption("Production-grade Rust gateway + LangGraph agent pipeline. Zero PII in AI context.")
+@st.cache_data(ttl=3)
+def _generate_feed(n: int, flag_thresh: float, block_thresh: float) -> pd.DataFrame:
+    """Generate a simulated risk cache response feed."""
+    rng = np.random.default_rng(int(time.time()) if True else 42)
+    merchant_cats = ["FOOD", "TRAVEL", "ECOM", "UTILITY", "P2P", "GAMBLING"]
+    records = []
+    for _ in range(n):
+        score   = float(rng.beta(1.5, 8) if rng.random() > 0.15 else rng.beta(6, 2))
+        verdict = "BLOCK" if score >= block_thresh else "FLAG" if score >= flag_thresh else "ALLOW"
+        records.append({
+            "trace_id"          : hashlib.md5(str(rng.integers(1e9)).encode()).hexdigest()[:10],
+            "vpa_hash"          : f"{_hash(str(rng.integers(1e9)))}…",
+            "amount (INR)"      : round(float(rng.exponential(3000)), 2),
+            "merchant_category" : rng.choice(merchant_cats),
+            "risk_score"        : round(score, 4),
+            "verdict"           : verdict,
+            "latency_µs"        : int(rng.integers(200, 4800)),
+        })
+    return pd.DataFrame(records)
 
-tab_demo, tab_arch, tab_bench = st.tabs(["🔍 Live Demo", "🏗️ Architecture", "⚔️ Bench Results"])
+feed_df = _generate_feed(n_feed_rows, risk_threshold, block_threshold)
 
-# ── TAB 1: Live Demo ─────────────────────────────────────────────────────────
+# KPIs
+total      = len(feed_df)
+n_block    = (feed_df["verdict"] == "BLOCK").sum()
+n_flag     = (feed_df["verdict"] == "FLAG").sum()
+avg_lat    = feed_df["latency_µs"].mean()
 
-with tab_demo:
-    st.subheader("Submit a Transaction")
-    st.info(
-        "All values below are SYNTHETIC — no real UPI IDs or personal data. "
-        "The system will pseudonymize them before any AI processing."
+col_kpi1.metric("Transactions",  total)
+col_kpi2.metric("🔴 BLOCKED",   n_block, delta=f"{100*n_block/total:.1f}%")
+col_kpi3.metric("🟠 FLAGGED",   n_flag,  delta=f"{100*n_flag/total:.1f}%")
+col_kpi4.metric("Avg Latency",   f"{avg_lat:.0f} µs", delta="< 5 000 µs target" if avg_lat < 5000 else "⚠️ over target")
+
+def _color_verdict(val: str) -> str:
+    return f"background-color: {VERDICT_COLOR.get(val, '')}22; color: {VERDICT_COLOR.get(val, 'black')}; font-weight: bold"
+
+styled = feed_df.style.applymap(_color_verdict, subset=["verdict"])
+st.dataframe(styled, use_container_width=True, height=350)
+
+if auto_refresh:
+    time.sleep(3)
+    st.rerun()
+
+st.download_button(
+    "⬇️ Export feed CSV",
+    feed_df.to_csv(index=False).encode(),
+    file_name="varaksha_risk_feed.csv",
+    mime="text/csv",
+)
+
+# ── Section 2: Money-Mule Network Graph ───────────────────────────────────────
+st.divider()
+st.subheader("🕸️ Section 2: Money-Mule Network (Layer 3 — NetworkX / BIS Aurora model)")
+
+st.info(
+    "This graph is built **asynchronously** — outside the payment path. "
+    "Detected clusters are pushed to the Rust cache via `POST /v1/webhook/update_cache`. "
+    "Typologies: **Fan-out** (disbursement), **Fan-in** (aggregation), **Cycle** (layering).",
+    icon="ℹ️",
+)
+
+@st.cache_data(ttl=30)
+def _get_graph_data() -> tuple[list, list, list]:
+    G        = build_demo_graph()
+    clusters = run_detection(G)
+    flagged  = {n: c for c in clusters for n in c.nodes}
+
+    # Build Plotly node-link layout
+    pos = nx.spring_layout(G, seed=42, k=0.6)
+
+    edge_x, edge_y = [], []
+    for u, v in G.edges():
+        x0, y0 = pos[u]
+        x1, y1 = pos[v]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+
+    node_x, node_y, node_color, node_text, node_size = [], [], [], [], []
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        cluster = flagged.get(node)
+        if cluster:
+            node_color.append(TYPOLOGY_COLOR.get(cluster.typology, "#e74c3c"))
+            node_text.append(f"{node[:8]}…<br>{cluster.typology}<br>score={cluster.risk_score:.2f}")
+            node_size.append(18)
+        else:
+            node_color.append("#95a5a6")
+            node_text.append(f"{node[:8]}… (legit)")
+            node_size.append(8)
+
+    return (edge_x, edge_y), (node_x, node_y, node_color, node_text, node_size), clusters
+
+(edge_x, edge_y), (node_x, node_y, node_color, node_text, node_size), clusters = _get_graph_data()
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=edge_x, y=edge_y,
+    mode="lines",
+    line=dict(color="#bdc3c7", width=0.8),
+    hoverinfo="none",
+))
+fig.add_trace(go.Scatter(
+    x=node_x, y=node_y,
+    mode="markers",
+    marker=dict(size=node_size, color=node_color, line=dict(width=1, color="#2c3e50")),
+    text=node_text,
+    hovertemplate="%{text}<extra></extra>",
+))
+fig.update_layout(
+    title       = "Transaction Network — flagged nodes coloured by typology",
+    showlegend  = False,
+    height      = 500,
+    margin      = dict(l=10, r=10, t=40, b=10),
+    plot_bgcolor= "#0e1117",
+    paper_bgcolor="#0e1117",
+    font        = dict(color="#ecf0f1"),
+    xaxis       = dict(showgrid=False, zeroline=False, showticklabels=False),
+    yaxis       = dict(showgrid=False, zeroline=False, showticklabels=False),
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# Cluster summary table
+if clusters:
+    cluster_df = pd.DataFrame([{
+        "Typology"   : c.typology,
+        "Nodes"      : len(c.nodes),
+        "Edges"      : c.edge_count,
+        "Risk Score" : round(c.risk_score, 3),
+    } for c in clusters])
+    st.dataframe(cluster_df, use_container_width=True, hide_index=True)
+
+# Typology legend
+legend_cols = st.columns(4)
+for i, (typology, color) in enumerate(TYPOLOGY_COLOR.items()):
+    legend_cols[i].markdown(
+        f'<span style="color:{color}; font-weight:bold">■ {typology}</span>',
+        unsafe_allow_html=True,
     )
 
-    col1, col2 = st.columns(2)
+# ── Section 3: Accessible Alert Panel ────────────────────────────────────────
+st.divider()
+st.subheader("🔔 Section 3: Accessible Alert — Mock-Bhashini Layer (Layer 4)")
 
-    with col1:
-        sender_upi   = st.text_input("Sender UPI ID (demo)",   value="alice@okaxis")
-        receiver_upi = st.text_input("Receiver UPI ID (demo)", value="bob@paytm")
-        amount       = st.number_input("Amount (₹)", min_value=1.0, max_value=10_00_000.0,
-                                        value=12_500.0, step=100.0)
+st.info(
+    "When a transaction is BLOCKED, the system generates a **court-ready English legal warning** "
+    "(citing BNS/IT Act laws), translates it to **Hindi via Mock-Bhashini NMT**, and produces "
+    "an **MP3 audio alert** using `edge-tts` Neural TTS (hi-IN-SwaraNeural voice).",
+    icon="ℹ️",
+)
 
-    with col2:
-        merchant_cat = st.selectbox(
-            "Merchant Category",
-            ["groceries", "utilities", "fuel", "rent", "healthcare",
-             "wire_transfer", "food", "unknown"],
+col_alert1, col_alert2 = st.columns([1, 1])
+
+with col_alert1:
+    st.subheader("🎯 Simulate a Blocked Transaction")
+    sim_vpa    = st.text_input("VPA (will be hashed)", value="attacker@ybl")
+    sim_amount = st.number_input("Amount (INR)", value=175_000.0, step=1000.0)
+    sim_cat    = st.selectbox("Merchant Category", ["P2P", "GAMBLING", "ECOM", "TRAVEL"])
+    sim_score  = st.slider("Risk Score", 0.75, 1.00, 0.92, 0.01)
+    sim_flags  = st.multiselect("Graph Flags", ["FAN_OUT", "FAN_IN", "CYCLE", "SCATTER"], default=["FAN_OUT", "CYCLE"])
+    run_alert  = st.button("🚨 Generate Alert", type="primary")
+
+with col_alert2:
+    if run_alert:
+        tx = FlaggedTransaction(
+            transaction_id    = f"TXN-DEMO-{int(time.time())}",
+            vpa_hash          = hashlib.sha256(sim_vpa.encode()).hexdigest(),
+            amount_inr        = sim_amount,
+            merchant_category = sim_cat,
+            risk_score        = sim_score,
+            graph_flags       = sim_flags,
         )
-        upi_network      = st.selectbox("UPI Network", ["NPCI", "HDFC", "ICICI", "SBI"])
-        is_first         = st.checkbox("First transfer between these parties", value=False)
-        include_gps      = st.checkbox("Include GPS coordinates (will be hashed to distance only)", value=True)
+        with st.spinner("Generating multilingual alert…"):
+            result = asyncio.run(generate_alert(tx))
 
-    if include_gps:
-        c1, c2 = st.columns(2)
-        with c1:
-            sender_lat = st.number_input("Sender Lat", value=19.076090)
-            sender_lon = st.number_input("Sender Lon", value=72.877426)
-        with c2:
-            recv_lat = st.number_input("Receiver Lat", value=28.613939)
-            recv_lon = st.number_input("Receiver Lon", value=77.209023)
+        risk_label = "🔴 CRITICAL" if result.risk_level == "CRITICAL" else "🟠 HIGH"
+        st.markdown(f"### {risk_label} — Transaction Blocked")
+
+        st.markdown("**📄 English Warning (Court-Ready)**")
+        st.warning(result.english_warning)
+
+        st.markdown("**🇮🇳 Hindi Warning (Mock-Bhashini NMT)**")
+        st.error(result.hindi_warning)
+
+        st.markdown("**⚖️ Laws Cited**")
+        for law in result.laws_cited:
+            st.markdown(f"- `{law}`")
+
+        if result.audio_path and result.audio_path.exists():
+            st.markdown("**🔊 Audio Alert (edge-tts · hi-IN-SwaraNeural)**")
+            with open(result.audio_path, "rb") as f:
+                st.audio(f.read(), format="audio/mp3")
+            st.caption(f"File: `{result.audio_path.name}`")
+        else:
+            st.caption("⚠️ Audio not generated — run `pip install edge-tts` to enable.")
     else:
-        sender_lat = sender_lon = recv_lat = recv_lon = None
+        st.markdown(
+            """
+            **How it works:**
+            1. Fill in the transaction details on the left.
+            2. Click **Generate Alert**.
+            3. The system will cite applicable Indian laws, translate to Hindi,
+               and generate a spoken audio warning.
 
-    upi_note = st.text_input("UPI Note / Memo", value="Rent for March")
+            > *"Security is useless if the victim doesn't understand the warning."*
+            > — Varaksha V2 Design Brief
+            """
+        )
 
-    if st.button("🚀 Submit Transaction", type="primary"):
-        payload = {
-            "sender_upi_id":    sender_upi,
-            "receiver_upi_id":  receiver_upi,
-            "amount_inr":       amount,
-            "merchant_category": merchant_cat,
-            "upi_network":      upi_network,
-            "is_first_transfer": is_first,
-        }
-        if include_gps and all(v is not None for v in [sender_lat, sender_lon, recv_lat, recv_lon]):
-            payload.update({
-                "sender_lat": sender_lat, "sender_lon": sender_lon,
-                "receiver_lat": recv_lat, "receiver_lon": recv_lon,
-            })
-
-        with st.spinner("Processing through Rust gateway → Agent 01 → 02 → 03…"):
-            t0 = time.perf_counter()
-            try:
-                resp = httpx.post(GATEWAY_URL, json=payload, timeout=15.0)
-                elapsed = (time.perf_counter() - t0) * 1000
-                resp.raise_for_status()
-                result = resp.json()
-            except httpx.HTTPStatusError as e:
-                st.error(f"Gateway error {e.response.status_code}: {e.response.text[:300]}")
-                st.stop()
-            except Exception as e:
-                st.error(f"Connection error: {e}")
-                st.stop()
-
-        verdict = result.get("verdict", "UNKNOWN")
-        score   = result.get("risk_score", result.get("final_score", 0.0))
-
-        # Verdict banner
-        css_class = {
-            "BLOCK": "verdict-block",
-            "FLAG":  "verdict-flag",
-            "ALLOW": "verdict-allow",
-        }.get(verdict, "verdict-allow")
-        icon = {"BLOCK": "🚫", "FLAG": "⚠️", "ALLOW": "✅"}.get(verdict, "❓")
-
-        st.markdown(f"""
-<div class="{css_class}">
-  <h2 style="margin:0">{icon} {verdict}</h2>
-  <p style="margin:4px 0 0 0; color:#9ca3af">Risk score: <b>{score:.4f}</b> · Pipeline: {elapsed:.0f} ms</p>
-</div>
-""", unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        # Metrics row
-        mc1, mc2, mc3, mc4 = st.columns(4)
-        mc1.metric("Final Score",   f"{score:.4f}")
-        mc2.metric("Tx ID",         result.get("tx_id", "—")[:12] + "…")
-        mc3.metric("Gate FP",       result.get("gate_fingerprint", result.get("key_fingerprint", "—"))[:12] + "…")
-        mc4.metric("Latency",       f"{elapsed:.0f} ms")
-
-        # Narrative
-        narrative = result.get("narrative", "")
-        if narrative:
-            st.markdown("**System Narrative**")
-            st.info(narrative)
-
-        # Law refs
-        law_refs = result.get("law_refs", [])
-        if law_refs:
-            st.markdown("**Applicable Law Sections**")
-            for r in law_refs:
-                st.markdown(f"- **{r.get('section')}** — {r.get('description')} (max: {r.get('max_sentence')})")
-
-        # Gate signature trail
-        with st.expander("🔐 Cryptographic Trail"):
-            st.code(json.dumps(result, indent=2), language="json")
-
-        # PDF download
-        if verdict in ("BLOCK", "FLAG"):
-            try:
-                sys.path.insert(0, str(Path(__file__).parent.parent / "agents"))
-                from legal_report import generate_report
-                pdf_path = generate_report(result, output_dir=str(REPORTS_DIR))
-                pdf_bytes = pdf_path.read_bytes()
-                st.download_button(
-                    "📄 Download Signed PDF Report",
-                    data=pdf_bytes,
-                    file_name=pdf_path.name,
-                    mime="application/pdf",
-                )
-            except Exception as e:
-                st.warning(f"PDF generation error: {e}")
-
-# ── TAB 2: Architecture ───────────────────────────────────────────────────────
-
-with tab_arch:
-    st.subheader("Pipeline Architecture")
-    st.markdown("""
-```
-Client → [Rust Gateway :8080]
-           │  Rate-limit check (DashMap sliding window)
-           │  HMAC-SHA256 pseudonymize UPI IDs
-           │  Laplace DP noise on amount (ε=1.0)
-           │  GPS → great-circle km (no raw coords)
-           │  Ed25519 sign SanitizedTx
-           ▼
-         [Gate A]  ← Ed25519 verify
-           │
-         [Agent 01: IsolationForest Profiler :8001]
-           │  IsolationForest anomaly score (PaySim-trained)
-           │  Sliding-window velocity counter
-           │  Z-score on amount
-           │  Ed25519 sign AgentVerdict
-           ▼
-         [Gate B]  ← Ed25519 verify
-           │
-         [Agent 02: Graph Analyst :8002]  [SGX simulation]
-           │  NetworkX DiGraph: fan-out, circular flow, hub centrality
-           │  Ed25519 sign GraphVerdict
-           ▼
-         [Gate C]  ← Ed25519 verify
-           │
-         [Agent 03: Decision :8003]
-           │  Weighted score: 0.35×anomaly + 0.35×graph + 0.15×velocity + 0.15×hub
-           │  Law mapping: BNS §318(4), §111, IT Act §66C, PMLA §3
-           │  GPT-4o-mini zero-PII narrative
-           │  Ed25519 sign FinalVerdict
-           ▼
-         ALLOW / FLAG / BLOCK + court-ready PDF
-```
-""")
-
-    st.markdown("**Adversarial scan (pre-pipeline)**")
-    st.markdown("""
-- Regex sweep (instant, 10+ patterns)
-- FAISS cosine similarity vs deepset/prompt-injections index
-- KL-divergence vs legitimate UPI memo corpus
-""")
-
-# ── TAB 3: Bench Results ──────────────────────────────────────────────────────
-
-with tab_bench:
-    st.subheader("Adversarial Benchmark (varaksha-bench)")
-    st.markdown("""
-Run `varaksha-bench --target http://localhost:8080 --report ./report.pdf` after
-compiling with `cargo build --features bench-mode`.
-
-The bench crate sends 200 payloads across 5 MITRE ATLAS attack classes and
-expects ≥95% block rate to pass CI.
-
-| Attack Class | MITRE ATLAS | OWASP ML | Severity |
-|---|---|---|---|
-| Data Poisoning | AML.T0020 | ML05 | HIGH |
-| Model Evasion | AML.T0015 | ML04 | CRITICAL |
-| Prompt Injection | AML.T0051 | ML06 | CRITICAL |
-| Membership Inference | AML.T0024 | ML03 | MEDIUM |
-| Model Inversion | AML.T0024.001 | ML03 | MEDIUM |
-
-**bench-mode safety:** The `/test/art-harness` route is compiled-in ONLY when
-`--features bench-mode` is passed to cargo. Production binaries are built with
-`cargo build --release` (no flags) and have no ART endpoint.
-""")
-
-    # Show last bench JSON if it exists
-    bench_json = Path("varaksha-bench-report.json")
-    if bench_json.exists():
-        st.markdown("**Last benchmark run:**")
-        data = json.loads(bench_json.read_text())
-        st.metric("Block Rate", f"{data.get('block_rate_pct', 0):.1f}%")
-        st.metric("Total Attacks", data.get("total_attacks", 0))
-        st.metric("Blocked", data.get("total_blocked", 0))
-        with st.expander("Full JSON"):
-            st.json(data)
-    else:
-        st.info("No bench report found. Run varaksha-bench to generate one.")
+# ── Footer ────────────────────────────────────────────────────────────────────
+st.divider()
+st.caption(
+    "Varaksha V2 · Secure AI Software & Systems Hackathon · "
+    "Blue Team: NPCI UPI Fraud Detection · "
+    "Inspired by Nasdaq Verafin + BIS Project Aurora + Bhashini API"
+)
