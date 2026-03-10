@@ -1,23 +1,18 @@
 [package]
-name    = "varaksha-gateway"
+name = "varaksha-gateway"
 version = "0.2.0"
 edition = "2021"
-description = "Layer 2: Real-Time Consortium Risk Cache Gateway — Varaksha V2"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TODO [teammate — Rust]:
-#   All dependencies you need are listed here.
-#   Implement the function bodies in src/main.rs and src/cache.rs.
-# ─────────────────────────────────────────────────────────────────────────────
 [dependencies]
 actix-web   = "4"
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
-dashmap     = "5"               # TODO: lock-free concurrent hash map
-sha2        = "0.10"            # TODO: SHA-256 VPA hashing
-hmac        = "0.12"            # TODO: HMAC-SHA256 webhook auth
+sha2        = "0.10"
+hmac        = "0.12"
 hex         = "0.4"
 tokio       = { version = "1", features = ["full"] }
 log         = "0.4"
 env_logger  = "0.11"
 uuid        = { version = "1", features = ["v4"] }
+
+risk-cache = { path = "../risk-cache" }

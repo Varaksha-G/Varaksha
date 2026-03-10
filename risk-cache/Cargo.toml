@@ -1,0 +1,9 @@
+[package]
+name = "risk-cache"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dashmap = "5"
+tokio = { version = "1", features = ["rt-multi-thread","macros","time"] }
+log = "0.4"
