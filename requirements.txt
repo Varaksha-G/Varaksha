@@ -1,21 +1,25 @@
-# ── Local ML Engine (Layer 1) ─────────────────────────────────────────────────
-scikit-learn>=1.4.0
-imbalanced-learn>=0.12.0      # SMOTE
-xgboost>=2.0.0
-joblib>=1.3.0
+# requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+# SERVER RUNTIME — installed on Render / Fly.io / any deployment target.
+# Training dependencies are in requirements-train.txt (local use only).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Inference (replaces sklearn + xgboost + pandas at runtime) ────────────────
+onnxruntime>=1.18.0           # ~30 MB — all model inference goes through this
 numpy>=1.26.0
-pandas>=2.1.0
+
+# ── Web server ────────────────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
 
 # ── Graph Agent (Layer 3) ─────────────────────────────────────────────────────
 networkx>=3.3
-
-# ── Accessible Alert Agent (Layer 4) ─────────────────────────────────────────
-edge-tts>=6.1.10              # Microsoft Neural TTS, no API key required
 requests>=2.32.0
 
-# ── Dashboard (Layer 5) ───────────────────────────────────────────────────────
-streamlit>=1.35.0
-plotly>=5.21.0
+# ── Accessible Alert Agent (Layer 4) ─────────────────────────────────────────
+edge-tts>=6.1.10
+googletrans==4.0.0rc1         # optional; graceful-degrades if install fails
 
-# ── Dev / test ────────────────────────────────────────────────────────────────
+# ── Dev ───────────────────────────────────────────────────────────────────────
 pytest>=8.0.0
+
