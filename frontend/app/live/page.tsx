@@ -649,7 +649,7 @@ function TransactionFeed() {
       </div>
 
       {/* Scrollable feed body */}
-      <div className="overflow-y-auto flex-1" style={{ maxHeight: "420px" }}>
+      <div className="overflow-y-auto flex-1" style={{ maxHeight: "600px" }}>
         <AnimatePresence initial={false}>
           {rows.map((row, i) => (
             <motion.div
@@ -727,6 +727,225 @@ function accumulate(rows: FeedRow[]) {
       total: acc.total + 1,
     }),
     { allow: 0, flag: 0, block: 0, total: 0 },
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODULE F — ML MODEL STACK
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ML_MODELS = [
+  {
+    letter: "01",
+    code: "RF-300",
+    name: "Random Forest",
+    role: "Primary Classifier",
+    accent: "#2563EB",
+    accentClass: "bg-saffron",
+    borderClass: "border-saffron/20",
+    concept:
+      "Ensemble of 300 decision trees trained on 111K labelled transactions with SMOTE rebalancing. Votes across trees to produce a calibrated fraud probability score.",
+    tracks: [
+      "Transaction velocity (60-min window)",
+      "Network topology: cycle, fan-out, scatter scores",
+      "Balance drain ratio & round-amount flag",
+      "Device novelty & previous failure count",
+      "Temporal patterns (hour sin/cos encoding)",
+    ],
+    metrics: [
+      { label: "Accuracy",  value: "96.52%", pct: 96.5 },
+      { label: "ROC-AUC",   value: "0.9952",  pct: 99.5 },
+      { label: "F1 (fraud)",value: "0.9579",  pct: 95.8 },
+      { label: "Precision", value: "97.45%", pct: 97.5 },
+      { label: "Recall",    value: "93.59%", pct: 93.6 },
+    ],
+    weight: "Primary",
+    artifact: "varaksha_rf_model.onnx",
+  },
+  {
+    letter: "02",
+    code: "ISOF-02",
+    name: "Isolation Forest",
+    role: "Anomaly Detector",
+    accent: "#D97706",
+    accentClass: "bg-flag",
+    borderClass: "border-flag/20",
+    concept:
+      "Unsupervised outlier detector that isolates anomalies by recursively partitioning the feature space. No fraud labels required — flags transactions that deviate from the learned distribution.",
+    tracks: [
+      "Multivariate outliers across all 16 features",
+      "Novel transaction patterns not seen in training",
+      "Structurally anomalous amount–velocity combinations",
+      "Unseen merchant category and device pairings",
+      "Distribution shift across all graph topology scores",
+    ],
+    metrics: [
+      { label: "Contamination", value: "2.0%",  pct: 2 },
+      { label: "Flagged rate",  value: "~2%",   pct: 2 },
+      { label: "Mode",          value: "Unsupervised", pct: 100 },
+      { label: "Label input",   value: "None",  pct: 100 },
+      { label: "Inference",     value: "Real-time", pct: 100 },
+    ],
+    weight: "Secondary",
+    artifact: "isolation_forest.onnx",
+  },
+  {
+    letter: "03",
+    code: "SCALER",
+    name: "Standard Scaler",
+    role: "Feature Normalisation",
+    accent: "#0D7A5F",
+    accentClass: "bg-allow",
+    borderClass: "border-allow/20",
+    concept:
+      "Fitted on the training distribution; transforms all 16 raw features to zero-mean, unit-variance before RF inference. Ensures probability calibration is stable across transaction magnitude ranges.",
+    tracks: [
+      "All 16 feature dimensions before classifier input",
+      "Training distribution mean and variance",
+      "Zero-mean, unit-variance normalisation",
+      "Consistent scale across amount, age, velocity",
+      "ONNX-exported for runtime parity with training",
+    ],
+    metrics: [
+      { label: "Features",     value: "16",          pct: 100 },
+      { label: "Stage",        value: "Pre-inference", pct: 100 },
+      { label: "Distribution", value: "Zero-mean",   pct: 100 },
+      { label: "Variance",     value: "Unit",        pct: 100 },
+      { label: "Export",       value: "ONNX",        pct: 100 },
+    ],
+    weight: "Pipeline",
+    artifact: "scaler.onnx",
+  },
+];
+
+function MLModelModule() {
+  return (
+    <section
+      className="border border-cream/[0.08] overflow-hidden"
+      style={{ borderRadius: 2 }}
+    >
+      {/* Module header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-cream/[0.06] bg-cream/[0.025]">
+        <div className="flex items-center gap-3">
+          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/40">
+            Module F &mdash; ML Model Stack
+          </span>
+          <motion.span
+            className="inline-block w-1.5 h-1.5 rounded-full bg-saffron"
+            animate={{ opacity: [1, 0.25, 1] }}
+            transition={{ duration: 2.4, repeat: Infinity }}
+          />
+        </div>
+        <span className="font-barlow text-[0.48rem] tracking-[0.20em] uppercase text-cream/18">
+          3 models &middot; ONNX runtime
+        </span>
+      </div>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-px bg-cream/[0.04] p-px">
+        {ML_MODELS.map((m) => (
+          <motion.div
+            key={m.code}
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, delay: ML_MODELS.indexOf(m) * 0.12 }}
+            className="bg-ink flex flex-col"
+          >
+            {/* Accent top-bar */}
+            <div className="h-0.5" style={{ backgroundColor: m.accent }} />
+
+            <div className="p-5 flex flex-col gap-4 flex-1">
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="font-barlow text-[0.44rem] tracking-[0.28em] uppercase"
+                      style={{ color: m.accent }}
+                    >
+                      {m.letter}
+                    </span>
+                    <span className="font-courier text-[0.56rem] text-cream/30">{m.code}</span>
+                  </div>
+                  <h3 className="font-playfair font-bold text-cream text-lg leading-tight">
+                    {m.name}
+                  </h3>
+                  <p className="font-barlow text-[0.52rem] tracking-[0.20em] uppercase text-cream/35 mt-0.5">
+                    {m.role}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 font-barlow text-[0.44rem] tracking-[0.18em] uppercase px-2 py-0.5 border ${m.borderClass}`}
+                  style={{ color: m.accent }}
+                >
+                  {m.weight}
+                </span>
+              </div>
+
+              {/* Concept */}
+              <p className="font-barlow text-[0.61rem] text-cream/45 leading-relaxed">
+                {m.concept}
+              </p>
+
+              {/* What it tracks */}
+              <div>
+                <p className="font-barlow text-[0.48rem] tracking-[0.26em] uppercase text-cream/25 mb-2">
+                  Tracks
+                </p>
+                <ul className="space-y-1">
+                  {m.tracks.map((t) => (
+                    <li key={t} className="flex items-start gap-2">
+                      <span className="mt-1 shrink-0 w-1 h-1 rounded-full" style={{ backgroundColor: m.accent }} />
+                      <span className="font-courier text-[0.58rem] text-cream/38">{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Metrics */}
+              <div className="mt-auto">
+                <p className="font-barlow text-[0.48rem] tracking-[0.26em] uppercase text-cream/25 mb-2">
+                  Results
+                </p>
+                <div className="space-y-2">
+                  {m.metrics.map((met) => (
+                    <div key={met.label}>
+                      <div className="flex justify-between mb-0.5">
+                        <span className="font-barlow text-[0.50rem] tracking-[0.14em] uppercase text-cream/30">
+                          {met.label}
+                        </span>
+                        <span className="font-courier text-[0.58rem] text-cream/60">{met.value}</span>
+                      </div>
+                      <div className="h-px bg-cream/[0.06] overflow-hidden">
+                        <motion.div
+                          className="h-full"
+                          style={{ backgroundColor: m.accent }}
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${met.pct}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.9, ease: "easeOut", delay: 0.2 }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Artifact */}
+              <div className="pt-3 border-t border-cream/[0.06]">
+                <span className="font-barlow text-[0.44rem] tracking-[0.20em] uppercase text-cream/20">
+                  Artifact &nbsp;
+                </span>
+                <span className="font-courier text-[0.54rem]" style={{ color: m.accent }}>
+                  {m.artifact}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -838,6 +1057,9 @@ export default function LivePage() {
           <CacheVisualizer />
           <SecurityArena />
         </div>
+
+        {/* ── F full-width — ML model stack ─────────────────────────────── */}
+        <MLModelModule />
 
         {/* ── E full-width ──────────────────────────────────────────────── */}
         <LegalReport />
