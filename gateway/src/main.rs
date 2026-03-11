@@ -19,11 +19,47 @@ struct AppState {
     cache: RiskCache,
 }
 
+/// Normalise a VPA to a canonical form before hashing so that a full
+/// phone-number VPA and its already-masked counterpart produce the same
+/// hash in the consortium cache.
+///
+/// Rule (mirrors NPCI display convention):
+///   - handle is 10+ consecutive digits  →  mask to  XX****XX@bank
+///   - handle already matches XX****XX    →  kept as-is  (already canonical)
+///   - name-based handle                  →  kept as-is
+///
+/// Examples
+///   9876543210@ybl   →  98****10@ybl  (full phone → canonical)
+///   98****10@ybl     →  98****10@ybl  (already canonical → unchanged)
+///   ravi.kumar@axis  →  ravi.kumar@axis
+fn normalise_vpa(vpa: &str) -> String {
+    if let Some(at) = vpa.find('@') {
+        let handle = &vpa[..at];
+        let bank   = &vpa[at + 1..];
+        // Full phone number (10+ digits)
+        if handle.len() >= 10 && handle.chars().all(|c| c.is_ascii_digit()) {
+            let h = handle;
+            return format!("{}****{}@{}", &h[..2], &h[h.len()-2..], bank);
+        }
+        // Already-masked phone (e.g. "98****10") — treat as canonical
+        if handle.len() == 8
+            && handle[..2].chars().all(|c| c.is_ascii_digit())
+            && &handle[2..6] == "****"
+            && handle[6..].chars().all(|c| c.is_ascii_digit())
+        {
+            return vpa.to_string();
+        }
+    }
+    vpa.to_string()
+}
+
 fn hash_vpa(vpa: &str) -> String {
+
+    let canonical = normalise_vpa(vpa);
 
     let mut hasher = Sha256::new();
 
-    hasher.update(vpa.as_bytes());
+    hasher.update(canonical.as_bytes());
 
     hex::encode(hasher.finalize())
 }

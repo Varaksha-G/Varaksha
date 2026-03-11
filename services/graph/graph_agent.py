@@ -57,8 +57,39 @@ class GraphSweepResult:
 
 # ── Synthetic graph builder ───────────────────────────────────────────────────
 
+def _normalise_vpa(vpa: str) -> str:
+    """
+    Canonical form before hashing — mirrors the Rust gateway's normalise_vpa().
+
+    A full phone-number VPA and its masked counterpart must hash identically
+    so that consortium-cache lookups remain consistent regardless of which
+    form a PSP submits.
+
+    Rules:
+      - 10+ digit handle  →  XX****XX@bank  (e.g. 9876543210@ybl → 98****10@ybl)
+      - already-masked    →  unchanged       (e.g. 98****10@ybl  → 98****10@ybl)
+      - name-based        →  unchanged       (e.g. ravi.kumar@axisbank)
+    """
+    if "@" not in vpa:
+        return vpa
+    handle, bank = vpa.split("@", 1)
+    # Full phone number
+    if handle.isdigit() and len(handle) >= 10:
+        return f"{handle[:2]}****{handle[-2:]}@{bank}"
+    # Already-masked phone (e.g. "98****10")
+    if (
+        len(handle) == 8
+        and handle[:2].isdigit()
+        and handle[2:6] == "****"
+        and handle[6:].isdigit()
+    ):
+        return vpa
+    return vpa
+
+
 def _hash_vpa(vpa: str) -> str:
-    return hashlib.sha256(vpa.encode()).hexdigest()[:16]  # short for readability
+    canonical = _normalise_vpa(vpa)
+    return hashlib.sha256(canonical.encode()).hexdigest()[:16]  # short for readability
 
 
 def build_demo_graph() -> nx.DiGraph:
