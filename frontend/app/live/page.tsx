@@ -170,7 +170,7 @@ function riskBar(score: number) {
 
 const LOAD_STAGES = [
   { label: "Rust Hashing …",   sub: "SHA-256 VPA digest · DashMap lookup" },
-  { label: "ML Scoring …",     sub: "Random Forest 300 trees · XGBoost ensemble" },
+  { label: "ML Scoring …",     sub: "Random Forest 300 trees · IsolationForest anomaly" },
   { label: "Graph Checking …", sub: "NetworkX fan-out / fan-in / cycle scan" },
 ];
 

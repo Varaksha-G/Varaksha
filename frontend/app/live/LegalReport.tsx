@@ -39,7 +39,7 @@ Merchant Cat.   : Finance  (High-Risk Category)
 Device Status   : FIRST-SEEN  (new device fingerprint)
 
 VERDICT        : BLOCK
-Risk Score     : 0.90 / 1.00  (RF: 0.89  ·  XGBoost: 0.91)
+Risk Score     : 0.90 / 1.00  (RF: 0.89  ·  IsolationForest: 0.91)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FRAUD SIGNALS DETECTED
@@ -48,7 +48,7 @@ FRAUD SIGNALS DETECTED
  2.  High-value transfer exceeding ₹50,000 threshold  (AMOUNT_LOG = 11.51)
  3.  First-seen device fingerprint  (new device flag: TRUE)
  4.  Receiver VPA pattern "cash.agent.77" — synthetic mule indicator
- 5.  ML Ensemble composite score: 0.90  (Random Forest 0.89 · XGBoost 0.91)
+ 5.  ML composite score: 0.90  (Random Forest 0.89 · IsolationForest 0.91)
  6.  Merchant category "Finance" — elevated risk category
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

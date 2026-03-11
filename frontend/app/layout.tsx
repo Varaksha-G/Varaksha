@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Barlow, Courier_Prime } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 // ── Font Definitions ──────────────────────────────────────────────────────────
@@ -61,6 +62,37 @@ export default function RootLayout({
        * antialiased  → subpixel rendering
        */}
       <body className="bg-cream text-ink font-barlow antialiased">
+        {/* ── Site-wide navigation ── */}
+        <nav className="sticky top-0 z-50 border-b border-ink/10 bg-cream/90 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between h-11">
+            <Link
+              href="/"
+              className="font-playfair font-bold text-[1.05rem] text-ink tracking-tight hover:text-saffron transition-colors"
+            >
+              Varaksha<span className="text-saffron">.</span>
+            </Link>
+            <div className="flex items-center gap-6">
+              <Link
+                href="/"
+                className="font-barlow text-[0.65rem] tracking-[0.22em] uppercase text-ink/50 hover:text-ink transition-colors"
+              >
+                Overview
+              </Link>
+              <Link
+                href="/flow"
+                className="font-barlow text-[0.65rem] tracking-[0.22em] uppercase text-ink/50 hover:text-ink transition-colors"
+              >
+                How It Works
+              </Link>
+              <Link
+                href="/live"
+                className="font-barlow text-[0.65rem] tracking-[0.22em] uppercase bg-ink text-cream px-3 py-1.5 hover:bg-saffron hover:text-ink transition-colors"
+              >
+                Live Demo
+              </Link>
+            </div>
+          </div>
+        </nav>
         {children}
       </body>
     </html>

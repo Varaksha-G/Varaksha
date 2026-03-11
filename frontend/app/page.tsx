@@ -55,10 +55,10 @@ const metrics = [
   },
   {
     kicker: "Model Performance",
-    value: "90.75%",
+    value: "94.4%",
     label: "Random Forest Accuracy",
-    sub: "Benchmark Score",
-    source: "JETIR 2024",
+    sub: "75K rows · 4 real datasets",
+    source: "Varaksha V2 · trained Mar 2026",
     accent: "bg-allow",           // green top-bar
     valueColor: "text-allow",
     colSpan: "col-span-12 md:col-span-4",
@@ -89,7 +89,7 @@ const metrics = [
 // ── Architecture Layers ───────────────────────────────────────────────────────
 
 const layers = [
-  { id: "L1", name: "ML Engine",      tech: "RF · XGBoost · SMOTE" },
+  { id: "L1", name: "ML Engine",      tech: "RF-300 · IsolationForest · SMOTE" },
   { id: "L2", name: "Rust Gateway",   tech: "DashMap · SHA-256 · <10ms" },
   { id: "L3", name: "Graph Agent",    tech: "NetworkX · Fan-out · Cycles" },
   { id: "L4", name: "Alert Agent",    tech: "LLM · Bhashini NMT · TTS" },
@@ -166,7 +166,7 @@ export default function PitchPage() {
         <motion.div variants={fadeIn} className="flex items-center gap-4">
           <div className="w-14 h-[2px] bg-saffron" />
           <span className="font-barlow text-[0.62rem] tracking-[0.28em] uppercase text-ink/30">
-            Rust &middot; Random Forest &middot; XGBoost &middot; NetworkX &middot; Bhashini
+            Rust &middot; Random Forest &middot; IsolationForest &middot; NetworkX &middot; Bhashini
           </span>
           <div className="flex-1 h-px bg-ink/10" />
         </motion.div>
