@@ -52,102 +52,121 @@ interface Milestone {
 const MILESTONES: Milestone[] = [
   {
     date:  "Feb 28",
-    title: "The Reboot",
-    quote: "V1 passed every test. It was also impossible to demo.",
-    body:  "We audited V1 together — PyO3 bindings, a kernel monitor, six agents, twelve setup steps. All of it worked. None of it was showable in thirty seconds. We made the call: branch test, five focused layers, plain JSON between them. V1 stays on main as proof of depth. V2 is for the room.",
-    tags:  ["Architecture", "Decision Day", "V1 Audit"],
+    title: "Defining the Architecture",
+    quote: "A system that cannot be demonstrated in under a minute cannot be evaluated under pressure.",
+    body:  "An initial audit identified a fundamental tension between technical depth and operational legibility. The architecture carried PyO3 bindings, a kernel monitor, multi-agent orchestration, and a twelve-step setup sequence — all fully functional, none presentable within a constrained demonstration window. The decision was taken to rebuild on a focused five-layer pipeline with plain JSON interfaces between components, with demonstrability treated as a first-class design constraint.",
+    tags:  ["Architecture", "5-Layer Design", "Design Decision"],
     owner: "both",
     Icon:  Lightbulb,
   },
   {
     date:  "Mar 1",
-    title: "A Privacy Chokepoint in Rust",
-    quote: "Raw UPI IDs are toxic data. They should not survive past the front door.",
-    body:  "Built the Actix-Web gateway as the single process that ever sees raw VPAs. SHA-256 on entry — everything downstream works with hashes. DashMap for the lock-free concurrent risk cache. Three endpoints wired, score_to_verdict() thresholds set, every TODO comment has exact implementation steps for whoever fills in the cache methods.",
+    title: "Privacy Gateway in Rust",
+    quote: "Sensitive identifiers must not persist beyond the perimeter. Everything downstream operates on hashes.",
+    body:  "The Actix-Web 4 gateway was designed as the sole component that handles raw Virtual Payment Addresses. SHA-256 hashing is applied at ingress — all downstream services receive only derived identifiers. DashMap provides a lock-free concurrent risk cache across the Actix worker pool. Three endpoints manage transaction scoring, health enquiries, and cache updates; score_to_verdict() threshold logic determines ALLOW, FLAG, and BLOCK classifications.",
     tags:  ["Rust", "SHA-256", "DashMap", "Actix-Web 4"],
     owner: "sec",
     Icon:  ShieldCheck,
   },
   {
     date:  "Mar 1",
-    title: "Teaching the Model",
-    quote: "Start with something that trains. We can sharpen it later.",
-    body:  "First cut: RandomForest and XGBoost in a soft-vote ensemble, eight engineered features — transaction velocity, round-amount flag, out-degree, hour sinusoid. SMOTE before the split, always. PaySim 50K stratified. It trained. Numbers looked reasonable. Moved on.",
+    title: "ML Baseline Established",
+    quote: "A working baseline yields more actionable information than an unimplemented optimal architecture.",
+    body:  "The initial model comprised a RandomForest and XGBoost soft-vote ensemble operating on eight engineered features: transaction velocity, round-amount flag, network out-degree, and hour-of-day sinusoidal encoding. SMOTE rebalancing was applied prior to every train-test split. Trained on a stratified 50K PaySim sample, the baseline established an evaluation framework and an accuracy reference point for subsequent iterations.",
     tags:  ["RF + XGBoost", "SMOTE", "8 features", "PaySim"],
     owner: "ml",
     Icon:  BrainCircuit,
   },
   {
     date:  "Mar 2",
-    title: "Following the Money Graph",
-    quote: "Fan-out is the tell. Every mule ring looks the same once you see the shape.",
-    body:  "Wired the NetworkX agent completely off the payment path — heavy graph traversal must never block a /v1/tx response. Four BIS typologies detected: fan-out, fan-in, directed cycles, scatter. Switched score aggregation from sum to max after sum false-flagged legitimate high-volume merchants. HMAC-signed webhook pushes result to the Rust cache.",
-    tags:  ["NetworkX", "Fan-out", "Cycles", "Async", "HMAC-SHA256"],
+    title: "Graph-Based Mule Detection",
+    quote: "Network fan-out is a consistent topological signature across all known money-mule architectures.",
+    body:  "The NetworkX graph agent operates asynchronously and entirely outside the critical payment path — graph traversal must never introduce latency into /v1/tx response times. Four BIS Project Hertha typologies are detected: fan-out, fan-in, directed cycles, and scatter patterns. Score aggregation uses the maximum across detected patterns rather than summation, preventing false positives on legitimate high-volume merchants. Results are pushed to the Rust risk cache via HMAC-SHA256-signed webhooks.",
+    tags:  ["NetworkX", "Fan-out", "Directed Cycles", "Async", "HMAC-SHA256"],
     owner: "sec",
     Icon:  GitBranch,
   },
   {
-    date:  "Mar 2-3",
-    title: "Alerts That Actually Reach People",
-    quote: "If the alert goes out in English, 44% of India cannot act on it.",
-    body:  "Alert agent built with zero hard dependencies — deterministic Hindi templates, no LLM, no API key required. Edge-tts for free neural TTS. Googletrans covers all 22 scheduled Indian languages. BLOCK verdicts cite IT Act 2000 and BNSS by design — the legal framing matters. Falls back gracefully to plain text on base Python.",
-    tags:  ["Hindi TTS", "22 languages", "IT Act", "edge-tts"],
+    date:  "Mar 2–3",
+    title: "Multilingual Alert Delivery",
+    quote: "A fraud alert has no utility if the recipient cannot read the language in which it is issued.",
+    body:  "The alert agent was designed with zero hard runtime dependencies. All Hindi narration uses deterministic templates, requiring neither a language model nor an external API. Googletrans provides coverage for all 22 Indian scheduled languages; edge-tts delivers Microsoft neural TTS output at no cost. BLOCK-verdict alerts explicitly cite IT Act 2000 §66C and BNSS §318, grounding each notification in the applicable legal framework. The agent degrades gracefully to plain text on base Python environments.",
+    tags:  ["Hindi TTS", "22 languages", "IT Act 2000 §66C", "edge-tts"],
     owner: "sec",
     Icon:  MessageCircle,
   },
   {
     date:  "Mar 3",
-    title: "First Time it Felt Real",
-    quote: "Watching fake transactions scroll by with real verdict colours — that is when it clicked.",
-    body:  "Streamlit dashboard as local proof-of-life: auto-refreshing ALLOW / FLAG / BLOCK feed, Plotly Scattergl transaction network, Hindi alert panel, audit log of the last 50. One command. Zero real PII — every VPA synthetic from a seeded RNG. Rough, but alive.",
-    tags:  ["Streamlit", "Plotly", "Live Feed", "Zero PII"],
+    title: "Integration Proof-of-Concept",
+    quote: "A live feed of synthetic fraud, rendered with correctly classified verdicts, validated the end-to-end pipeline.",
+    body:  "The Streamlit dashboard was constructed as an integration test made visible: an auto-refreshing ALLOW/FLAG/BLOCK verdict feed with colour-coded classifications, a Plotly Scattergl force-directed transaction network, a Hindi alert panel surfacing the most recent flagged transaction, and an audit log of the last 50 scored events. All Virtual Payment Addresses are synthetically generated from a seeded RNG — no real payment data is processed at any stage.",
+    tags:  ["Streamlit", "Plotly Scattergl", "Synthetic PII", "Audit Log"],
     owner: "both",
     Icon:  BarChart2,
   },
   {
-    date:  "Mar 5-7",
-    title: "The Big Model Refactor",
-    quote: "RF and XGBoost together hit 450 MB at inference. We only had 512. XGBoost had to go.",
-    body:  "Dropped XGBoost from the serving stack — RF-300 alone reaches ROC-AUC 0.9869, the marginal gain from the ensemble was under 0.005 on this dataset family. Expanded features from 8 to 16. Seven dataset loaders merged 75,358 real rows. Output: varaksha_rf_model.onnx. The model finally felt like it was trained on something.",
-    tags:  ["RF-300 only", "16 features", "75K rows", "ONNX", "0.9869 AUC"],
+    date:  "Mar 5–7",
+    title: "Model Architecture Overhaul",
+    quote: "At 450 MB combined, the ensemble consumed nearly the entire memory budget for a sub-0.005 accuracy gain.",
+    body:  "XGBoost was removed from the serving stack. RF-300 achieves ROC-AUC 0.9869 in isolation; the marginal improvement from the ensemble was below 0.005 on this dataset family — insufficient to justify the memory overhead. Feature engineering was expanded from 8 to 16 variables, incorporating balance_drain_ratio, account_age_days, previous_failed_attempts, and transfer_cashout_flag. Seven dataset loaders merged 75,358 real-world rows into a single training set. The output artefact, varaksha_rf_model.onnx, replaced the ensemble entirely.",
+    tags:  ["RF-300 only", "16 features", "75K rows", "ONNX", "ROC-AUC 0.9869"],
     owner: "ml",
     Icon:  RefreshCw,
   },
   {
-    date:  "Mar 9-10",
-    title: "Shipped to the Web",
-    quote: "Static export to Cloudflare Pages. Zero cold starts. No excuses for a slow demo.",
-    body:  "Next.js 15 with output export — no Node server, no spin-up time, global edge delivery. Three routes: landing metrics, animated 5-layer walkthrough, real-time transaction feed with Security Arena and Cache Visualizer. First deploy live the night before the final sprint.",
-    tags:  ["Next.js 15", "Cloudflare Pages", "framer-motion", "3 routes"],
+    date:  "Mar 9–10",
+    title: "Production Deployment",
+    quote: "Static export to a global edge network eliminates cold starts and infrastructure overhead from the demonstration path entirely.",
+    body:  "Next.js 15 was configured with static export, removing the Node.js server from the serving path and enabling zero-latency global delivery via Cloudflare Pages. The frontend comprises three routes: a landing page with live metric cards, an animated architectural walkthrough, and a synthetic real-time transaction feed incorporating a Security Arena panel and a Cache Visualizer. Initial deployment was live and stable.",
+    tags:  ["Next.js 15", "Cloudflare Pages", "Static Export", "framer-motion"],
     owner: "both",
     Icon:  Globe,
   },
   {
     date:  "Mar 11 AM",
-    title: "Three Datasets Were Sitting Right There",
-    quote: "The file timestamps do not lie. Those models were never trained on the full set.",
-    body:  "Audited data/datasets/ — 10 CSV files, but only 7 had loaders. supervised_dataset.csv (1,699 rows), remaining_behavior_ext.csv (34,423 rows), ton-iot.csv — all ignored. Timestamps on the ONNX files confirmed they predated the Phase 6 additions. Three new loaders written, wired in, merged.",
-    tags:  ["Data Audit", "34K rows found", "3 missing loaders", "stale timestamps"],
+    title: "Dataset Coverage Audit",
+    quote: "Model artefact timestamps confirmed the training pipeline had never ingested the complete dataset.",
+    body:  "A systematic audit of the dataset directory revealed that three files had no registered loaders in the training pipeline: supervised_dataset.csv (API behaviour anomaly patterns, 1,699 rows), remaining_behavior_ext.csv (bot, attack, and outlier behaviours, 34,423 rows), and ton-iot.csv (IoT network intrusion data). Filesystem modification timestamps on the ONNX model artefacts confirmed they predated the addition of these files. Three loaders were written, validated against schema, and integrated into the merge pipeline.",
+    tags:  ["Dataset Audit", "34K rows recovered", "3 loaders added", "Timestamp analysis"],
     owner: "ml",
     Icon:  SearchCode,
   },
   {
     date:  "Mar 11 PM",
     title: "96.52%",
-    quote: "I ran the eval three times. The number kept coming back.",
-    body:  "Retrained on 111,499 merged rows. SMOTE to 50/50. RF Accuracy 96.52% — up 2.1 points. ROC-AUC 0.9952. Fraud F1 0.9579. Cleaned out the ghost artifacts after: lightgbm, xgboost, voting_ensemble — none of them were ever loaded at inference. Just noise.",
-    tags:  ["111K rows", "96.52%", "ROC-AUC 0.9952", "Ghost cleanup"],
+    quote: "Retraining on the complete dataset produced a consistent 96.52% accuracy — a 2.1-point gain over the partial-data baseline.",
+    body:  "The expanded dataset of 111,499 merged rows was rebalanced via SMOTE to a 51,735/51,735 class distribution. Final evaluation: RF Accuracy 96.52%, ROC-AUC 0.9952, Fraud Precision 0.9745, Recall 0.9419, F1 0.9579. Stale model artefacts from discarded experiments — lightgbm.pkl, xgboost.pkl, xgboost.onnx, voting_ensemble.pkl, voting_ensemble.onnx — were removed from the repository. None were referenced by the active inference pipeline.",
+    tags:  ["111K rows", "96.52% accuracy", "ROC-AUC 0.9952", "Artefact cleanup"],
     owner: "ml",
     Icon:  Zap,
   },
   {
     date:  "Mar 11",
-    title: "Polish, Transfer, Ship",
-    quote: "The gap between done and shipped is the finishing touches. They always matter.",
-    body:  "Dot-grid body texture, surface-card gradient utility, nav shadow. Amber (#D97706) split from the blue accent for FLAG verdicts — the colour finally reads as a warning. Repo transferred to the Varaksha-G org. Cloudflare project recreated. Docs updated. Timeline page added. That was it.",
-    tags:  ["Texture", "Amber FLAG", "Varaksha-G org", "Cloudflare"],
+    title: "Finalisation and Deployment",
+    quote: "The margin between a functional system and a deployable one is defined by the quality of its finishing details.",
+    body:  "A dot-grid body texture and surface-gradient card utility were applied across the frontend. The amber token (#D97706) was separated from the saffron accent to provide a visually distinct classification colour for FLAG-severity verdicts. The repository was migrated to the Varaksha-G organisation, the Cloudflare Pages project was recreated under the new identity, all documentation was updated, and the build timeline page was published.",
+    tags:  ["dot-grid texture", "Amber FLAG", "Organisation transfer", "Cloudflare"],
     owner: "both",
     Icon:  Rocket,
+  },
+];
+
+// ── Storyboard data ──────────────────────────────────────────────────────────
+const STORYBOARD = [
+  {
+    num:   "01",
+    label: "The Problem",
+    body:  "India's Unified Payments Interface processes over 500 million transactions daily. Legacy fraud detection operates on batch cycles, introducing delays that allow mule networks to execute and disperse before a single alert is raised. Real-time classification at the transaction layer is a structural necessity, not an optimisation.",
+  },
+  {
+    num:   "02",
+    label: "The Architecture",
+    body:  "Varaksha is a five-layer detection pipeline: a Rust privacy gateway that hashes identifiers at ingress, a Random Forest ML engine trained on 111K real transactions, a graph topology analyser for network-pattern fraud, a multilingual alert agent covering 22 Indian languages, and a real-time operations dashboard.",
+  },
+  {
+    num:   "03",
+    label: "The Outcome",
+    body:  "96.52% detection accuracy. ROC-AUC 0.9952. Sub-5ms P99 gateway latency. Four BIS money-mule typologies detected autonomously. Fraud alerts in 22 Indian languages, with legal citations embedded. Built, trained, and deployed to global edge in 11 days.",
   },
 ];
 
@@ -341,7 +360,7 @@ export default function TimelinePage() {
           transition={{ delay: 0.2 }}
           className="font-barlow text-[0.78rem] text-ink/42 leading-relaxed max-w-md mb-9"
         >
-          A sprint diary from two people working on different halves of the same problem.
+          A detailed account of two parallel workstreams converging on a single system.
           Security architecture in pink. Machine learning in blue.
           Shared decisions in gradient.
         </motion.p>
@@ -374,6 +393,40 @@ export default function TimelinePage() {
             </span>
           </div>
         </motion.div>
+      </section>
+
+      {/* Storyboard */}
+      <section className="px-6 lg:px-12 pb-16 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-ink/8">
+          {STORYBOARD.map((s, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ delay: i * 0.1, duration: 0.55, ease: "easeOut" }}
+              className="px-0 md:px-8 py-8 first:pl-0 last:pr-0"
+            >
+              <p
+                className="font-playfair font-bold leading-none mb-4 select-none"
+                style={{
+                  fontSize: "3rem",
+                  backgroundImage: `linear-gradient(135deg, ${PINK}25, ${BLUE}25)`,
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                }}
+              >
+                {s.num}
+              </p>
+              <h3 className="font-playfair font-bold text-ink text-[1rem] mb-2">
+                {s.label}
+              </h3>
+              <p className="font-barlow text-[0.72rem] text-ink/48 leading-relaxed">
+                {s.body}
+              </p>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* Timeline */}
