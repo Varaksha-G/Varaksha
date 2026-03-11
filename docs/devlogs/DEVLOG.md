@@ -182,8 +182,8 @@ should reach the account holder in their language, not just log a JSON verdict.
    available
 4. Optionally synthesises speech via `edge-tts` (Microsoft TTS, free tier) if
    available
-5. Cites the relevant Indian legal statute (IT Act 2000 §66C for identity fraud,
-   BNSS §318 for cheating by personation)
+5. Cites the relevant Indian legal statute (IT Act 2000 §66D for cheating by
+   personation using a computer resource, BNS §318(4) for cheating offences)
 
 **Graceful degradation:** Every optional dependency (`googletrans`, `edge-tts`,
 `lime`) is wrapped in a try/except import. The agent works on base Python +
@@ -446,7 +446,7 @@ The narration template for a BLOCK verdict:
 ```
 ⚠ Varaksha Alert: Transaction of ₹{amount} to {merchant} has been BLOCKED.
 Reason: {reason}.
-This may constitute an offence under IT Act 2000 §66C / BNSS §318.
+This may constitute an offence under IT Act 2000 §66D / BNS §318(4).
 Contact your bank's fraud desk immediately.
 ```
 
