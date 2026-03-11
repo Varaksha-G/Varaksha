@@ -32,8 +32,7 @@ ROOT       = pathlib.Path(__file__).resolve().parents[2]
 MODEL_DIR  = ROOT / "data" / "models"
 
 # ── ONNX model paths ──────────────────────────────────────────────────────────
-_RF_ONNX   = MODEL_DIR / "voting_ensemble.onnx"   # RF (or RF+XGB averaged)
-_XGB_ONNX  = MODEL_DIR / "xgboost.onnx"           # XGBoost (optional)
+_RF_ONNX   = MODEL_DIR / "varaksha_rf_model.onnx"
 _ISO_ONNX  = MODEL_DIR / "isolation_forest.onnx"
 _META      = MODEL_DIR / "feature_meta.json"
 
@@ -43,6 +42,9 @@ _NUMERICAL   = [
     "amount", "hour_of_day", "day_of_week",
     "transactions_last_1h", "transactions_last_24h",
     "amount_zscore", "gps_delta_km", "is_new_device", "is_new_merchant",
+    # Multi-dataset engineered features (default 0.0 when not present at inference)
+    "balance_drain_ratio", "account_age_days",
+    "previous_failed_attempts", "transfer_cashout_flag",
 ]
 
 # Categorical label maps (must match LabelEncoder order from training)
@@ -70,7 +72,7 @@ class VarakshaScoringEngine:
         RF model session:          ~10–25 MB
         IsolationForest session:   ~5–10 MB
         numpy + ort runtime:       ~25 MB
-        Total:                     ~40–60 MB
+        Total:                     ~40–60 MB  (well within 512 MB limit)
     """
 
     def __init__(self) -> None:
@@ -88,9 +90,6 @@ class VarakshaScoringEngine:
         self._rf_sess  = ort.InferenceSession(str(_RF_ONNX),  sess_options=opts)
         self._iso_sess = ort.InferenceSession(str(_ISO_ONNX), sess_options=opts) if _ISO_ONNX.exists() else None
 
-        # XGBoost session for soft-voting average (optional)
-        self._xgb_sess = ort.InferenceSession(str(_XGB_ONNX), sess_options=opts) if _XGB_ONNX.exists() else None
-
         # Feature names from metadata (saved during training)
         if _META.exists():
             meta = json.loads(_META.read_text())
@@ -99,9 +98,8 @@ class VarakshaScoringEngine:
             self._feature_names = [c for c in _CATEGORICAL + _NUMERICAL]
 
         log.info(
-            "VarakshaScoringEngine ready | features=%d | xgb=%s | iso=%s",
+            "VarakshaScoringEngine ready | features=%d | iso=%s",
             len(self._feature_names),
-            "yes" if self._xgb_sess else "no",
             "yes" if self._iso_sess else "no",
         )
 
@@ -134,22 +132,14 @@ class VarakshaScoringEngine:
         """
         X = self._extract(tx)
 
-        # RF probability
+        # RF probability — sole classifier
         rf_out       = self._rf_sess.run(None, {"X": X})
-        rf_proba     = float(rf_out[1][0][1])   # index [1]=probabilities, [0]=first sample, [1]=fraud class
-
-        # XGBoost probability (average with RF if available)
-        if self._xgb_sess is not None:
-            xgb_out   = self._xgb_sess.run(None, {"X": X})
-            xgb_proba = float(xgb_out[1][0][1])
-            fraud_proba = (rf_proba + xgb_proba) / 2.0
-        else:
-            fraud_proba = rf_proba
+        fraud_proba  = float(rf_out[1][0][1])   # [1]=probabilities, [0]=first sample, [1]=fraud class
 
         # IsolationForest anomaly score
         if self._iso_sess is not None:
             iso_out      = self._iso_sess.run(None, {"X": X})
-            anomaly_score = float(iso_out[1][0])   # decision_function output
+            anomaly_score = float(iso_out[1].flat[0])   # decision_function output
         else:
             anomaly_score = 0.0
 

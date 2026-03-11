@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "gateway",
+    "risk-cache",
+]
+resolver = "2"

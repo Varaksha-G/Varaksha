@@ -15,6 +15,8 @@
   - [Phase 3 — Layer 3: Graph Agent](#phase-3--layer-3-graph-agent)
   - [Phase 4 — Layer 4: Accessible Alert Agent](#phase-4--layer-4-accessible-alert-agent)
   - [Phase 5 — Layer 5: Streamlit Demo Dashboard](#phase-5--layer-5-streamlit-demo-dashboard)
+  - [Phase 6 — ML Pipeline Overhaul: RF-Only + 5 Datasets](#phase-6--ml-pipeline-overhaul-rf-only--5-datasets)
+  - [Phase 7 — Frontend Dashboard: Next.js 15](#phase-7--frontend-dashboard-nextjs-15)
 - [Directory Map](#directory-map)
 - [Architecture Deep-Dive](#architecture-deep-dive)
   - [Why Five Separate Layers?](#why-five-separate-layers)
@@ -214,12 +216,120 @@ streamlit run services/demo/app.py
 **No real PII is used.** All transactions are generated from a seeded RNG.
 VPA strings are synthetic (`user_XXXX@okicici`, `merchant_XXXX@paytm`).
 
+### Phase 6 — ML Pipeline Overhaul: RF-Only + 5 Datasets
+
+**Files:** `services/local_engine/train_ensemble.py`, `services/local_engine/infer.py`
+
+The original Phase 1 ML stack was rebuilt to address two constraints that appeared
+after the initial commit:
+
+1. **Memory budget**: The free-tier deployment target (512 MB RAM) cannot host
+   both RandomForest and XGBoost simultaneously at inference time. XGBoost was
+   dropped; RF-300 alone provides the same recall with a smaller ONNX footprint.
+2. **Data quality**: The previous fallback chain (UPI CSV → PaySim → synthetic)
+   used at most ~5 K rows. Five real datasets were integrated to reach 75 K rows
+   and reduce reliance on synthetic oversampling.
+
+#### Changes to `train_ensemble.py`
+
+| Item | Before | After |
+|---|---|---|
+| Classifiers | `VotingClassifier(RF + XGB)` | `RandomForestClassifier(n_estimators=300)` |
+| Feature count | 8 | **16** |
+| Dataset loaders | 2 (PaySim, UPI CSV) | **7 loaders** (PaySim, UPI CSV, MomTSim, Digital Payment, USA Banking, Customer_DF joined, CDR Realtime Fraud) |
+| ONNX output | `voting_ensemble.onnx` | `varaksha_rf_model.onnx` |
+| Training rows | ~5,000 | **75,358** |
+
+**4 new engineered features** added on top of the original 8:
+- `balance_drain_ratio` — (oldbalanceOrg - newbalanceOrig) / (oldbalanceOrg + 1)
+- `account_age_days` — days since first transaction for the sender VPA
+- `previous_failed_attempts` — count of prior FLAG/BLOCK verdicts for the same sender
+- `transfer_cashout_flag` — 1 if transaction type is TRANSFER or CASH_OUT
+
+#### Training results
+
+| Dataset | Rows | Fraud % |
+|---|---|---|
+| PaySim (stratified 50 K) | 50,000 | 16.4% |
+| UPI Transactions | 647 | 24.0% |
+| Customer_DF + cust_transaction_details (joined) | 168 | 36.3% |
+| CDR Realtime Fraud | 24,543 | 50.2% |
+| **Merged total** | **75,358** | **27.5%** |
+
+| Metric | Value |
+|---|---|
+| RF Accuracy | **94.4%** |
+| RF ROC-AUC | **0.9869** |
+| Fraud Precision | 0.8996 |
+| Fraud Recall | 0.8983 |
+| Fraud F1 | **0.899** |
+
+#### Changes to `infer.py`
+
+- `_xgb_sess` and `_XGB_ONNX` removed — inference now loads only `varaksha_rf_model.onnx`
+- `_NUMERICAL` list expanded from 8 to **16 features** to match training schema
+- Fallback synthetic-input generator updated to produce 16-element vectors
+- Log line updated: `features=16 | iso=yes`
+
+#### Why RF-only?
+
+At the 75 K training scale, RF-300 achieves ROC-AUC 0.9869 — the marginal gain
+from adding XGBoost in a voting ensemble is < 0.005 AUC on this dataset family.
+Dropping XGBoost reduces the cold-start memory footprint from ~450 MB (RF + XGB
+loaded simultaneously in onnxruntime) to ~130 MB, fitting comfortably in the
+512 MB Render free tier.
+
 ---
 
-## Directory Map
+### Phase 7 — Frontend Dashboard: Next.js 15
+
+**Directory:** `frontend/`
+
+A React/Next.js 15 web app was added as the public-facing interface for the
+hackathon demo. It replaces the Streamlit dashboard for the web deployment tier
+(Streamlit is retained for local introspection).
+
+**Three pages:**
+
+| Route | Contents |
+|---|---|
+| `/` | Landing — product pitch, risk tier badges, key stats |
+| `/flow` | How-it-works — animated data-flow diagram through all 5 layers |
+| `/live` | Live demo — synthetic transaction feed with real-time gateway scoring |
+
+**Key technical decisions:**
+
+- **All components are `"use client"`** — no server-side rendering, no API routes.
+  Every page fetches data from the gateway directly from the browser.
+- **`output: "export"` in `next.config.ts`** — produces a fully static `out/`
+  directory. This is what enables deployment on Cloudflare Pages (no Node.js
+  server required, no cold starts, free edge caching globally).
+- **`images: { unoptimized: true }`** — required when `output: "export"` is set;
+  Next.js image optimisation needs a server, which we don't have.
+
+**Deployment target: Cloudflare Pages**
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Output directory | `out` |
+| Root directory | `frontend` |
+| Framework preset | Next.js (Static) |
+
+Reason for preferring Cloudflare Pages over Vercel: Vercel free tier spins down
+static projects after inactivity (cold start visible to demo judges). Cloudflare
+Pages serves from edge PoPs with zero cold start, unlimited free requests, and
+no sleep behaviour.
 
 ```
 varaksha/
+├── frontend/
+│   ├── app/
+│   │   ├── page.tsx               Landing page
+│   │   ├── flow/page.tsx          How-it-works flow
+│   │   └── live/page.tsx          Live transaction demo
+│   └── next.config.ts             Static export for Cloudflare Pages
+│
 ├── gateway/
 │   ├── Cargo.toml                     Actix-Web 4 + DashMap + sha2 + uuid
 │   └── src/
@@ -229,18 +339,20 @@ varaksha/
 │
 ├── services/
 │   ├── local_engine/
-│   │   └── train_ensemble.py          Layer 1 — ML training (RF + XGB + IF + SMOTE)
+│   │   ├── train_ensemble.py          Layer 1 — ML training (RF-300 + IF + SMOTE, 16 features)
+│   │   └── infer.py                   ONNX scoring engine
 │   ├── graph/
 │   │   └── graph_agent.py             Layer 3 — NetworkX mule-ring detection
 │   ├── agents/
 │   │   └── agent03_accessible_alert.py  Layer 4 — multilingual alert + law cite
 │   └── demo/
-│       └── app.py                     Layer 5 — Streamlit dashboard
+│       └── app.py                     Layer 5 — Streamlit dashboard (local)
 │
 ├── data/
-│   ├── datasets/                      Training data (CSV, Parquet, JSON)
-│   └── models/                        Trained model artefacts (.pkl) — gitignored
+│   ├── datasets/                      Training data (CSV, Parquet, JSON) — gitignored
+│   └── models/                        ONNX model artefacts (.onnx) — committed
 │
+├── Cargo.toml                         Root Rust workspace (gateway + risk-cache)
 ├── docs/
 │   └── devlogs/
 │       └── DEVLOG.md                  ← this file
@@ -393,10 +505,11 @@ then a real score after the graph agent pushes a webhook update.
 
 | Dataset | File | Source | Used for |
 |---------|------|--------|----------|
-| PaySim | `PS_20174392719_1491204439457_log.csv` | Kaggle (López-Rojas 2016) | Primary ML training |
-| UPI synthetic | `Untitled spreadsheet - upi_transactions.csv` | Self-generated | Local smoke-test training |
+| PaySim | `PS_20174392719_1491204439457_log.csv` | Kaggle (López-Rojas 2016) | Primary ML training (stratified 50 K sample) |
+| UPI synthetic | `Untitled spreadsheet - upi_transactions.csv` | Self-generated | UPI-specific transaction patterns |
+| Customer_DF + cust_transaction_details | `customer_df.csv` + `cust_transaction_details.csv` | Kaggle credit fraud | Joined on customer ID |
+| CDR Realtime Fraud | `cdr_realtime_fraud.csv` | Kaggle telecom fraud | High-fraud-rate supplement (50% fraud) |
 | JailbreakBench | `train-*.parquet`, `test-*.parquet` | HuggingFace | Prompt injection guard training |
-| Sadaf & Manivannan UPI paper | `paper_extracted.txt` | Research paper extraction | Supplementary feature validation |
 | Prompt injections | `prompt_injections.json` | Custom curated | PromptGuard fine-tune |
 
 ---

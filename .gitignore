@@ -1,6 +1,13 @@
 # ── Rust ──────────────────────────────────────────────────────────────────────
+/target/
+gateway/target/
 gateway/rust-core/target/
 varaksha-core/target/
+risk-cache/target/
+
+# ── Runtime logs ──────────────────────────────────────────────────────────────
+gateway_stdout.log
+gateway_stderr.log
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
@@ -23,6 +30,7 @@ data/datasets/banksim/
 data/datasets/archive/
 data/datasets/*.csv
 data/datasets/*.zip
+data/datasets/*.json
 data/datasets/jailbreakbench-main/
 datasets/paysim/
 datasets/banksim/
@@ -34,10 +42,11 @@ security/gate-m/playground/.gate_logs/
 security/gate-m/playground/.gate_snapshots/
 
 # ── Trained models (large binary files) ──────────────────────────────────────
+# Exclude heavy binary formats; allow .onnx and .json (checked in for deployment)
 data/models/*.pkl
 data/models/*.faiss
 data/models/model_manifest.json
-models/
+/models/
 *.pkl
 *.faiss
 
