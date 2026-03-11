@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -156,17 +156,19 @@ export function LegalReport() {
   const [progress,  setProgress ] = useState(0);
   const [dlState,   setDlState  ] = useState<DlState>("idle");
   const [language,  setLanguage ] = useState<LangCode>("hi");
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const langObj = LANGUAGES.find((l) => l.code === language)!;
   const alertT  = ALERT_TEXT[language];
 
-  // ── Reset audio whenever language changes ────────────────────────────────
+  // ── Cancel speech + reset audio whenever language changes ─────────────────
   useEffect(() => {
+    if (typeof window !== "undefined") window.speechSynthesis.cancel();
     setIsPlaying(false);
     setProgress(0);
   }, [language]);
 
-  // ── Audio player logic ──────────────────────────────────────────────────────
+  // ── Progress bar timer (visual) ───────────────────────────────────────────
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
@@ -182,14 +184,40 @@ export function LegalReport() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
+  // ── Play / pause ───────────────────────────────────────────────────────────
   const handlePlayPause = useCallback(() => {
-    if (progress >= 100) {
-      setProgress(0);
-      setIsPlaying(true);
+    if (typeof window === "undefined") return;
+    const synth = window.speechSynthesis;
+
+    if (isPlaying) {
+      // Pause both visual bar and speech
+      synth.pause();
+      setIsPlaying(false);
     } else {
-      setIsPlaying((p) => !p);
+      if (progress > 0 && progress < 100 && synth.paused) {
+        // Resume paused speech
+        synth.resume();
+        setIsPlaying(true);
+      } else {
+        // Start fresh (handles both first play and replay after finish)
+        setProgress(0);
+        const utt = new SpeechSynthesisUtterance(alertT.primary);
+        utt.lang = langObj.voiceLabel;  // e.g. "ta-IN", "hi-IN"
+        utt.rate = 0.92;
+        utt.onend = () => {
+          setIsPlaying(false);
+          setProgress(100);
+        };
+        utt.onerror = () => {
+          setIsPlaying(false);
+        };
+        utteranceRef.current = utt;
+        synth.cancel();    // clear any queued speech
+        synth.speak(utt);
+        setIsPlaying(true);
+      }
     }
-  }, [progress]);
+  }, [isPlaying, progress, alertT.primary, langObj.voiceLabel]);
 
   // ── PDF / evidence-file download ─────────────────────────────────────────
   const handleDownload = useCallback(() => {
@@ -411,7 +439,7 @@ export function LegalReport() {
 
               <div className="flex items-center justify-between mt-3">
                 <p className="font-barlow text-[0.48rem] tracking-widest uppercase text-cream/16">
-                  Simulated audio &middot; edge-tts
+                  Web Speech API &middot; edge-tts style
                 </p>
                 <AnimatePresence mode="wait">
                   <motion.p
