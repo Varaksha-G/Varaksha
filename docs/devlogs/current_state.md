@@ -443,7 +443,7 @@ Relevant law: **Digital Personal Data Protection Act, 2023** + **DPDP Rules, 202
 
 | Surface | Personal data? | Current handling | Gap / Action |
 |---|---|---|---|
-| `POST /v1/tx` — `vpa` field | **YES** — phone-number VPAs are §2(t) personal data | SHA-256 hashed at ingress before any storage | `consent_token` field added to `TxRequest`; handler consent-gate stub present; **production must wire to Consent Manager** |
+| `POST /v1/tx` — `vpa` field | **YES** — phone-number VPAs are §2(t) personal data | SHA-256 hashed at ingress before any storage | Consent gate **LIVE**: `ConsentManagerClient` calls AA `POST /v2/Consent/fetch` (ReBIT AA v2.0). Set `CONSENT_MANAGER_BASE_URL`, `CONSENT_MANAGER_API_KEY`, `CONSENT_MANAGER_FI_ID`. Use `DPDP_CONSENT_DEV_BYPASS=true` locally. |
 | `POST /v1/tx` — `device_id` | **YES** — device fingerprint is personal data | Documented as "must be pre-hashed client-side" | Enforcement is contractual (PSP obligation); add validation in production |
 | DashMap cache `{vpa_hash, …}` | No — SHA-256 digest is pseudonymous | TTL-evicted in-memory only | Clean |
 | Frontend sandbox (`/live`) | No — `deriveSandboxResult()` is pure browser-side JS | No network call made; nothing leaves the browser | Clean |
@@ -456,11 +456,11 @@ Relevant law: **Digital Personal Data Protection Act, 2023** + **DPDP Rules, 202
 
 | Obligation | Act reference | Status |
 |---|---|---|
-| Lawful purpose + consent before processing VPA | §4(1), §6 | ⚠️ Consent token field + handler stub added; full CM integration is production TODO |
+| Lawful purpose + consent before processing VPA | §4(1), §6 | ✅ `ConsentManagerClient` (`gateway/src/consent.rs`) calls AA `POST /v2/Consent/fetch`; 422 on missing token, 403 on inactive consent, 503 on transport error. `consent_id` logged against `trace_id` for §12(a) audit trail. |
 | Notice to Data Principal (language, purpose, rights) | §5, Rules 2025 Rule 3 | ⚠️ Footer notice on frontend; production must add dedicated privacy notice page |
 | Purpose limitation — fraud-risk scoring only | §6(3), §7(e) | ✅ No secondary use of hash or score |
 | Data minimisation — no raw PII in cache | §6(3) | ✅ Only `{vpa_hash, risk_score, reason}` stored |
-| TTL / retention policy | §6(3), §9(6) | ⚠️ TTL field exists in `CacheUpdateRequest`; background eviction task not yet implemented — production TODO |
+| TTL / retention policy | §6(3), §9(6) | ✅ Background eviction implemented in `risk-cache/src/cleaner.rs` (tokio task, 60 s sweep). `cache.rs::get()` also validates `expires_at` on every read. |
 | Data Principal rights (access, correction, erasure, nomination, grievance) | §§12–13 | ⚠️ Grievance contact placeholder added to frontend footer; no rights portal yet |
 | Significant Data Fiduciary registration (>10 M principals, or govt notification) | §10 | N/A for current demo scale |
 | Webhook HMAC-SHA256 signature on graph→gateway | DPDP security obligations, also IT Act §43A | ✅ Implemented |

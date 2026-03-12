@@ -1,8 +1,10 @@
 mod models;
+mod consent;
 
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 
 use models::{CacheUpdateRequest, CacheUpdateResponse, TxRequest, TxResponse, Verdict};
+use consent::ConsentManagerClient;
 
 use risk_cache::RiskCache;
 
@@ -16,7 +18,8 @@ use std::time::Instant;
 type HmacSha256 = Hmac<Sha256>;
 
 struct AppState {
-    cache: RiskCache,
+    cache:           RiskCache,
+    consent_manager: ConsentManagerClient,
 }
 
 /// Normalise a VPA to a canonical form before hashing so that a full
@@ -98,28 +101,48 @@ async fn check_tx(
     let tx = body.into_inner();
 
     // ── DPDP Act 2023 §4(1) — Consent Gate ────────────────────────────────────
-    // PRODUCTION TODO: Replace this stub with a real Consent Manager SDK call.
+    // Verify the consent artefact against the AA (Sahamati / ReBIT v2.0 spec)
+    // BEFORE touching tx.vpa (personal data per §2(t)).
     //
-    // Before hashing or touching `tx.vpa` (personal data per §2(t)) the handler
-    // MUST verify that a valid, unexpired consent artefact covering the purpose
-    // "fraud-risk-check" exists for this data principal.
+    // In production: set env vars CONSENT_MANAGER_BASE_URL, CONSENT_MANAGER_API_KEY,
+    // CONSENT_MANAGER_FI_ID.  In local dev: set DPDP_CONSENT_DEV_BYPASS=true.
     //
-    // Pseudocode for production:
-    //
-    //   let token = match &tx.consent_token {
-    //       Some(t) if !t.is_empty() => t,
-    //       _ => return HttpResponse::UnprocessableEntity().json(serde_json::json!({
-    //               "error": "CONSENT_REQUIRED",
-    //               "detail": "DPDP Act 2023 §4(1): consent_token is mandatory"
-    //           })),
-    //   };
-    //   consent_manager.verify(token, "fraud-risk-check", &tx.vpa).await?;
-    //   // log consent artefact ID with trace_id for §12 audit trail
-    //
-    // Until this check is wired to a real Consent Manager, only deploy this
-    // gateway on internal PSP infrastructure where the upstream caller has
-    // already obtained and validated the data principal's consent independently.
+    // On success, the returned consent_id is logged against trace_id to satisfy
+    // the §12(a) access-rights audit trail.
     // ──────────────────────────────────────────────────────────────────────────
+    match data.consent_manager.verify(tx.consent_token.as_ref(), &trace_id).await {
+        Ok(consent_id) => {
+            log::info!(
+                "[{}] consent verified: artefact_id={}",
+                trace_id, consent_id
+            );
+        }
+        Err(consent::ConsentError::TokenMissing) => {
+            return HttpResponse::UnprocessableEntity().json(serde_json::json!({
+                "error":  "CONSENT_REQUIRED",
+                "detail": "DPDP Act 2023 \u{00a7}4(1): consent_token is mandatory. \
+                            Obtain a consent artefact from your Consent Manager \
+                            before calling this endpoint.",
+                "trace_id": trace_id,
+            }));
+        }
+        Err(consent::ConsentError::NotActive(status)) => {
+            return HttpResponse::Forbidden().json(serde_json::json!({
+                "error":  "CONSENT_NOT_ACTIVE",
+                "detail": format!("Consent artefact is not active (status={status}). \
+                                   The Data Principal must grant or renew consent."),
+                "trace_id": trace_id,
+            }));
+        }
+        Err(e) => {
+            log::error!("[{}] consent verification failed: {}", trace_id, e);
+            return HttpResponse::ServiceUnavailable().json(serde_json::json!({
+                "error":  "CONSENT_CHECK_FAILED",
+                "detail": format!("{e}"),
+                "trace_id": trace_id,
+            }));
+        }
+    }
 
     let vpa_hash = hash_vpa(&tx.vpa);
 
@@ -217,8 +240,15 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init();
 
+    let consent_manager = ConsentManagerClient::from_env()
+        .unwrap_or_else(|e| {
+            panic!("Failed to initialise Consent Manager client: {e}. \
+                    Set DPDP_CONSENT_DEV_BYPASS=true for local development.");
+        });
+
     let state = Arc::new(AppState {
         cache: RiskCache::new(),
+        consent_manager,
     });
 
     let port = std::env::var("GATEWAY_PORT")

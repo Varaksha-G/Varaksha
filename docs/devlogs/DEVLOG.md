@@ -836,9 +836,26 @@ The **Digital Personal Data Protection (DPDP) Act, 2023** and its **2025 Rules**
 - Integrate a real DPDP-compliant Consent Manager (AA framework or RBI-regulated CM)
 - Implement the consent-token validation in `check_tx` (the stub is there)
 - Build Data Principal rights endpoints (access §12(a), correction §12(b), erasure §12(c))
-- Implement DashMap TTL background eviction task
 - Add a dedicated Privacy Notice page to the frontend (current footer notice is minimal)
 - Replace Google Fonts CDN with self-hosted fonts for production deployments
+
+---
+
+### Phase 14 — Live Consent Manager Integration (DPDP §4(1))
+
+**Commit:** pending  
+**Files:** `gateway/Cargo.toml`, `gateway/src/consent.rs` (new), `gateway/src/main.rs`, `docs/devlogs/current_state.md`
+
+#### Context
+Phase 13 added a consent-gate TODO stub in `check_tx`. This phase replaces it with a real async call to an RBI-regulated Account Aggregator via the ReBIT AA API v2.0.
+
+#### Changes
+- **`gateway/Cargo.toml`**: added `reqwest 0.12` (`json` + `rustls-tls` features, no native OpenSSL dependency)
+- **`gateway/src/consent.rs`** (new, ~230 lines): `ConsentManagerClient` implementing `POST /v2/Consent/fetch`. Reads env vars `CONSENT_MANAGER_BASE_URL`, `CONSENT_MANAGER_API_KEY`, `CONSENT_MANAGER_FI_ID`, `CONSENT_PURPOSE_CODE` (default `"101"` = ReBIT Category D — Fraud Risk Management). Dev mode: `DPDP_CONSENT_DEV_BYPASS=true` skips network call with a loud WARNING. Returns `consent_id` on success for §12(a) audit trail.
+- **`gateway/src/main.rs`**: `AppState` gains `consent_manager: ConsentManagerClient`; `check_tx` calls `verify()` before `hash_vpa()` — HTTP 422 on missing token, 403 on inactive consent, 503 on CM transport error; `consent_id` logged against `trace_id`.
+
+#### Also discovered: TTL eviction was already done
+`risk-cache/src/cleaner.rs` already implements a background tokio task (60 s sweep) and `cache.rs::get()` validates `expires_at` on every read. `current_state.md` had incorrectly marked this as a production TODO — corrected.
 
 ---
 
