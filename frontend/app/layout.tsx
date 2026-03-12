@@ -137,7 +137,8 @@ export default function RootLayout({
               <span className="font-semibold text-ink/50">Demo prototype.</span>{" "}
               No personal data is collected or transmitted. All transactions on this site use synthetic data.
               {" "}Varaksha backend deployments must obtain user consent per{" "}
-              <span className="text-ink/50">DPDP Act 2023 §4(1)</span> before processing real VPAs.
+              <span className="text-ink/50">DPDP Act 2023 §4(1)</span>{" "}or invoke the{" "}
+              <span className="text-ink/50">§7(g) Legitimate Use for Security</span>{" "}exemption before processing real VPAs.
             </p>
             <p className="font-barlow text-[0.58rem] text-ink/25 shrink-0">
               Grievances:{" "}

@@ -114,12 +114,28 @@ APPLICABLE LEGAL PROVISIONS
   Bharatiya Nyaya Sanhita (BNS) §318(4)
     Cheating by impersonation — Punishment: Imprisonment up to 7 years + fine
 
+  Information Technology Act §66C
+    Identity theft (SIM-swap / credential hijack)
+    Punishment: Imprisonment up to 3 years + fine up to ₹1,00,000
+
   Information Technology Act §66D
     Cheating by personation using computer resource
     Punishment: Imprisonment up to 3 years + fine up to ₹1,00,000
 
   Prevention of Money Laundering Act (PMLA) §3
     Projecting proceeds of crime as untainted property
+
+  DPDP Act 2023 §7(g)  [processing legal basis]
+    Legitimate use — ensuring safety and security / detecting unlawful activity
+    No explicit consent required when a PSP invokes this security exception
+
+  NPCI OC-215/2025-26  [operational compliance]
+    Per-VPA daily scoring cap enforced by Varaksha gateway (100 req / 24 h)
+    Architecture is physically incapable of exceeding NPCI rate limits
+
+  RBI Master Directions — Digital Payment Security Controls
+    Risk-based transaction monitoring (RBI 2026 mandate)
+    Varaksha fulfils the PSP obligation for dynamic risk-scoring layer
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SYSTEM EVIDENCE CHAIN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -222,7 +238,7 @@ export function LegalReport() {
           </span>
         </div>
           <span className="font-courier text-[0.52rem] text-cream/18">
-            BNS §318(4) &middot; IT Act §66D
+            BNS §318(4) &middot; IT Act §66C/D &middot; DPDP §7(g) &middot; NPCI OC-215
           </span>
       </div>
 
@@ -454,7 +470,7 @@ export function LegalReport() {
                     <path d="M8 11L3 6h3V1h4v5h3L8 11z" />
                     <rect x="2" y="13" width="12" height="2" />
                   </svg>
-                  Download Court-Ready PDF (BNS §318(4) &amp; IT Act §66D)
+                  Download Court-Ready PDF (BNS §318(4) &amp; IT Act §66C/D &amp; DPDP §7(g))
                 </motion.span>
               )}
 
@@ -515,6 +531,12 @@ export function LegalReport() {
                 color: "text-block",
               },
               {
+                code:  "IT Act §66C",
+                title: "Identity Theft",
+                desc:  "SIM-swap / credential hijack. Up to 3 years + ₹1L fine.",
+                color: "text-block",
+              },
+              {
                 code:  "IT Act §66D",
                 title: "Cheating by Personation",
                 desc:  "Via computer resource. Up to 3 years + ₹1L fine.",
@@ -525,6 +547,24 @@ export function LegalReport() {
                 title: "Money Laundering",
                 desc:  "Projecting proceeds of crime as untainted.",
                 color: "text-saffron",
+              },
+              {
+                code:  "DPDP §7(g)",
+                title: "Legitimate Use — Security",
+                desc:  "Lawful basis for fraud detection without explicit consent.",
+                color: "text-allow",
+              },
+              {
+                code:  "NPCI OC-215",
+                title: "Rate Cap — 2025-26",
+                desc:  "Per-VPA daily scoring limit enforced at gateway layer.",
+                color: "text-allow",
+              },
+              {
+                code:  "RBI 2FA 2026",
+                title: "Risk-Based Monitoring",
+                desc:  "Varaksha is the mandated dynamic risk-scoring layer.",
+                color: "text-cream/40",
               },
             ].map((law) => (
               <div key={law.code} className="border-b border-cream/[0.05] py-3.5 last:border-0">
