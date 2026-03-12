@@ -844,7 +844,7 @@ The **Digital Personal Data Protection (DPDP) Act, 2023** and its **2025 Rules**
 ### Phase 15 — Full 2026 Regulatory Hardening (NPCI OC-215 · DPDP §7(g) · IT Act §66C/D · RBI 2FA)
 
 **Date:** March 12, 2026  
-**Commit:** pending  
+**Commit:** `77117e5`  
 **Files:** `gateway/Cargo.toml`, `gateway/src/main.rs`, `gateway/src/models.rs`, `docs/devlogs/current_state.md`
 
 #### Context
