@@ -61,9 +61,9 @@ const MILESTONES: Milestone[] = [
   {
     date:  "Feb 28",
     title: "Defining the Architecture",
-    quote: "A system that cannot be demonstrated in under a minute cannot be evaluated under pressure.",
-    body:  "Requirements scoped to a focused five-layer pipeline: Rust privacy gateway, ML classifier, graph topology analyser, multilingual alert agent, and ops dashboard. Demonstrability was treated as a first-class design constraint alongside every functional requirement.",
-    tags:  ["Architecture", "5-Layer Design", "Design Decision"],
+    quote: "Demonstrability is a first-class design constraint.",
+    body:  "Five-layer architecture scoped: Rust privacy gateway, ML classifier, graph topology analyser, multilingual alert agent, and ops dashboard. System designed to be comprehensible in under a minute, evaluated under pressure.",
+    tags:  ["5-Layer Design", "Architecture", "Core Pipeline"],
     owner: "both",
     Icon:  Lightbulb,
   },
@@ -79,9 +79,9 @@ const MILESTONES: Milestone[] = [
   {
     date:  "Mar 1",
     title: "ML Baseline Established",
-    quote: "A working baseline yields more actionable information than an unimplemented optimal architecture.",
-    body:  "Initial RF + XGBoost soft-vote ensemble on 8 features — transaction velocity, round-amount flag, network out-degree, hour-of-day sinusoidal encoding — trained on a stratified 50K PaySim sample with SMOTE rebalancing. Established the evaluation framework and accuracy reference point for all subsequent iterations.",
-    tags:  ["RF + XGBoost", "SMOTE", "8 features", "PaySim"],
+    quote: "A working baseline yields insights that an unimplemented optimal architecture cannot.",
+    body:  "Random Forest + XGBoost soft-vote ensemble on transaction velocity, round-amount flag, network out-degree, and time-of-day encoding. Stratified 50K PaySim sample with SMOTE rebalancing. Reference point established for subsequent iterations.",
+    tags:  ["RF + XGBoost", "SMOTE", "PaySim"],
     owner: "ml",
     Icon:  BrainCircuit,
   },
@@ -106,9 +106,9 @@ const MILESTONES: Milestone[] = [
   {
     date:  "Mar 3",
     title: "Integration Proof-of-Concept",
-    quote: "A live feed of synthetic fraud, rendered with correctly classified verdicts, validated the end-to-end pipeline.",
-    body:  "A Streamlit dashboard confirmed end-to-end verdicts — from Rust ingress to multilingual alert — with a Plotly Scattergl force-directed transaction network, Hindi alert panel, and a 50-event audit log. All VPAs are synthetically generated; no real PII is processed at any stage.",
-    tags:  ["Streamlit", "Plotly Scattergl", "Synthetic PII", "Audit Log"],
+    quote: "End-to-end verdicts validated — from Rust ingress to multilingual alert.",
+    body:  "A live operations dashboard confirmed verdicts flowing through all five layers: transaction ingress, hashing, ML scoring, graph analysis, and multilingual alert dispatch. Force-directed network visualization, Hindi alert panel, and 50-event audit log. All data is synthetic—no real PII processed.",
+    tags:  ["5-Layer Pipeline", "Live Dashboard", "Audit Log", "Synthetic"],
     owner: "both",
     Icon:  BarChart2,
   },
@@ -133,9 +133,9 @@ const MILESTONES: Milestone[] = [
   {
     date:  "Mar 11 AM",
     title: "Dataset Coverage Audit",
-    quote: "Model artefact timestamps confirmed the training pipeline had never ingested the complete dataset.",
-    body:  "Filesystem timestamp analysis revealed three dataset files with no registered loaders: supervised_dataset.csv (1,699 rows), remaining_behavior_ext.csv (34,423 rows), and ton-iot.csv (19 rows). All three loaders were written, validated against schema, and integrated into the merge pipeline.",
-    tags:  ["Dataset Audit", "34K rows recovered", "3 loaders added", "Timestamp analysis"],
+    quote: "Model timestamps revealed the training pipeline had never ingested the complete dataset.",
+    body:  "Three missing dataset files discovered: supervised_dataset.csv, remaining_behavior_ext.csv, and ton-iot.csv. All loaders written, validated against schema, and integrated into the merge pipeline. 54,142 rows recovered.",
+    tags:  ["Dataset Audit", "54K Rows", "3 Loaders"],
     owner: "ml",
     Icon:  SearchCode,
   },
@@ -151,18 +151,18 @@ const MILESTONES: Milestone[] = [
   {
     date:  "Mar 11",
     title: "Finalisation and Deployment",
-    quote: "The margin between a functional system and a deployable one is defined by the quality of its finishing details.",
-    body:  "A dot-grid body texture and surface-gradient card utility were applied across the frontend; the amber token was separated from saffron to provide a distinct FLAG verdict colour. Repository migrated to Varaksha-G org, Cloudflare Pages project recreated under the new identity, and the build timeline page published.",
-    tags:  ["dot-grid texture", "Amber FLAG", "Organisation transfer", "Cloudflare"],
+    quote: "A deployable system is defined by finishing details—texture, colour, and interactive feedback.",
+    body:  "Frontend polish: dot-grid body texture, surface-gradient card utility, amber token separated from saffron for distinct FLAG verdict rendering. Next.js static export deployed to Cloudflare Pages. Core pipeline hardened and ready for production integration.",
+    tags:  ["Next.js 15", "Static Export", "Polish", "Production-Ready"],
     owner: "both",
     Icon:  Rocket,
   },
   {
     date:  "Mar 12",
     title: "Target Leakage Audit",
-    quote: "A ROC-AUC of 0.9952 on heterogeneous multi-source tabular data is a red flag, not a cause for celebration.",
-    body:  "A review of all dataset loaders found four target-leakage bugs: in three loaders (60,141 rows combined) is_new_device was a direct copy of the fraud label, and in CDR fraud merchant_category encoded fraud_type as category strings. All four fixed; models retrained: RF Accuracy 85.24%, ROC-AUC 0.9546, Recall 0.9229, F1 0.8401.",
-    tags:  ["Target leakage", "4 loaders fixed", "RF 85.24%", "ROC-AUC 0.9546"],
+    quote: "A ROC-AUC of 0.9952 on tabular data is a warning, not a cause for celebration.",
+    body:  "Code review found four target-leakage bugs: is_new_device directly copied fraud labels in three loaders (60K rows), and merchant_category encoded fraud_type. All fixed and retrained. Final scores: RF Accuracy 85.24%, ROC-AUC 0.9546, Recall 0.9229.",
+    tags:  ["Target Leakage", "4 Bugs Fixed", "RF 85.24%"],
     owner: "ml",
     Icon:  SearchCode,
   },
@@ -337,37 +337,37 @@ function Card({ ms, side }: { ms: Milestone; side: "left" | "right" | "center" }
             : { backgroundColor: color, opacity: 0.65 }
         }
       />
-      <div className="bg-white/55 backdrop-blur-sm px-5 py-5 lg:px-6 lg:py-6 transition-shadow duration-300 group-hover:shadow-[0_4px_24px_rgba(15,30,46,0.07)]">
-        <div className="flex items-start justify-between gap-4 mb-3">
+      <div className="bg-white/60 backdrop-blur-sm px-6 py-7 lg:px-8 lg:py-8 transition-shadow duration-300 group-hover:shadow-[0_8px_32px_rgba(15,30,46,0.12)]">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <Chip owner={ms.owner} />
-          <span className="font-courier text-[0.6rem] tracking-[0.14em] text-ink/60 font-semibold whitespace-nowrap pt-px">
+          <span className="font-courier text-[0.65rem] tracking-[0.14em] text-ink/70 font-semibold whitespace-nowrap pt-px">
             {ms.date}
           </span>
         </div>
         <h3
-          className="font-playfair font-bold text-ink leading-tight mb-3"
-          style={{ fontSize: "clamp(1.05rem, 2vw, 1.25rem)" }}
+          className="font-playfair font-bold text-ink leading-tight mb-4"
+          style={{ fontSize: "clamp(1.15rem, 2.2vw, 1.35rem)" }}
         >
           {ms.title}
         </h3>
         <p
-          className="font-playfair italic leading-snug mb-3"
-              style={{ fontSize: "0.88rem", color: isBoth ? PINK : color, opacity: 0.9 }}
+          className="font-playfair italic leading-snug mb-4"
+              style={{ fontSize: "0.95rem", color: isBoth ? PINK : color, opacity: 0.95 }}
         >
           &ldquo;{ms.quote}&rdquo;
         </p>
-        <p className="font-barlow text-[0.82rem] text-ink/65 leading-relaxed mb-4">
+        <p className="font-barlow text-[0.88rem] text-ink/70 leading-relaxed mb-5">
           {ms.body}
         </p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {ms.tags.map((t, i) => (
             <span
               key={i}
-              className="font-courier text-[0.58rem] tracking-wide uppercase px-2 py-0.5 rounded-full"
+              className="font-courier text-[0.62rem] tracking-wide uppercase px-2.5 py-1 rounded-full font-semibold"
               style={{
-                color:           isBoth ? "#6b7280" : color,
-                backgroundColor: isBoth ? "rgba(0,0,0,0.03)" : `${color}0c`,
-                border:          `1px solid ${isBoth ? "rgba(0,0,0,0.07)" : `${color}1f`}`,
+                color:           isBoth ? "#4b5563" : color,
+                backgroundColor: isBoth ? "rgba(0,0,0,0.05)" : `${color}0f`,
+                border:          `1px solid ${isBoth ? "rgba(0,0,0,0.1)" : `${color}25`}`,
               }}
             >
               {t}
@@ -449,11 +449,9 @@ export default function TimelinePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="font-barlow text-[0.78rem] text-ink/42 leading-relaxed max-w-md mb-9"
+          className="font-barlow text-[0.82rem] text-ink/60 leading-relaxed max-w-md mb-9"
         >
-          A detailed account of two parallel workstreams converging on a single system.
-          Security architecture in pink. Machine learning in blue.
-          Shared decisions in gradient.
+          Two workstreams converging on a single system. Security in pink, ML in blue, shared decisions in gradient.
         </motion.p>
 
         {/* Legend */}
@@ -469,7 +467,7 @@ export default function TimelinePage() {
           ].map(({ label, color }) => (
             <div key={label} className="flex items-center gap-2.5">
               <div className="w-7 h-[2px] rounded-full" style={{ backgroundColor: color }} />
-              <span className="font-barlow text-[0.6rem] tracking-[0.2em] uppercase text-ink/42">
+              <span className="font-barlow text-[0.65rem] tracking-[0.2em] uppercase text-ink/60 font-semibold">
                 {label}
               </span>
             </div>
@@ -479,7 +477,7 @@ export default function TimelinePage() {
               className="w-7 h-[2px] rounded-full"
               style={{ backgroundImage: `linear-gradient(90deg, ${PINK}, ${BLUE})` }}
             />
-            <span className="font-barlow text-[0.6rem] tracking-[0.2em] uppercase text-ink/42">
+            <span className="font-barlow text-[0.65rem] tracking-[0.2em] uppercase text-ink/60 font-semibold">
               Together
             </span>
           </div>
@@ -499,20 +497,20 @@ export default function TimelinePage() {
               className="px-0 md:px-8 py-8 first:pl-0 last:pr-0"
             >
               <p
-                className="font-playfair font-bold leading-none mb-4 select-none"
+                className="font-playfair font-bold leading-none mb-5 select-none"
                 style={{
-                  fontSize: "3rem",
-                  backgroundImage: `linear-gradient(135deg, ${PINK}25, ${BLUE}25)`,
+                  fontSize: "3.2rem",
+                  backgroundImage: `linear-gradient(135deg, ${PINK}30, ${BLUE}30)`,
                   WebkitBackgroundClip: "text",
                   color: "transparent",
                 }}
               >
                 {s.num}
               </p>
-              <h3 className="font-playfair font-bold text-ink text-[1rem] mb-2">
+              <h3 className="font-playfair font-bold text-ink text-[1.15rem] mb-3 leading-snug">
                 {s.label}
               </h3>
-              <p className="font-barlow text-[0.8rem] text-ink/62 leading-relaxed">
+              <p className="font-barlow text-[0.85rem] text-ink/70 leading-relaxed">
                 {s.body}
               </p>
             </motion.div>
@@ -622,9 +620,8 @@ export default function TimelinePage() {
           >
             What We Build Next
           </h2>
-          <p className="font-barlow text-[0.73rem] text-ink/38 max-w-md mx-auto leading-relaxed">
-            The system is shipped. These are the threads we picked up and consciously set down
-            to meet a deadline. Each one has a clear path.
+          <p className="font-barlow text-[0.78rem] text-ink/50 max-w-md mx-auto leading-relaxed">
+            Next steps: features we consciously set down to meet the deadline.
           </p>
         </motion.div>
 
