@@ -843,7 +843,7 @@ The **Digital Personal Data Protection (DPDP) Act, 2023** and its **2025 Rules**
 
 ### Phase 14 — Live Consent Manager Integration (DPDP §4(1))
 
-**Commit:** pending  
+**Commit:** `1a6c275`  
 **Files:** `gateway/Cargo.toml`, `gateway/src/consent.rs` (new), `gateway/src/main.rs`, `docs/devlogs/current_state.md`
 
 #### Context
