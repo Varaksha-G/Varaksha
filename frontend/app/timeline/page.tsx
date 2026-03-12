@@ -141,10 +141,10 @@ const MILESTONES: Milestone[] = [
   },
   {
     date:  "Mar 11 PM",
-    title: "96.52%",
-    quote: "Retraining on the complete dataset produced a consistent 96.52% accuracy — a 2.1-point gain over the partial-data baseline.",
-    body:  "The expanded dataset of 111,499 merged rows was rebalanced via SMOTE to a 51,735/51,735 class distribution. Final evaluation: RF Accuracy 96.52%, ROC-AUC 0.9952, Fraud Precision 0.9745, Recall 0.9419, F1 0.9579. Stale model artefacts from discarded experiments — lightgbm.pkl, xgboost.pkl, xgboost.onnx, voting_ensemble.pkl, voting_ensemble.onnx — were removed from the repository. None were referenced by the active inference pipeline.",
-    tags:  ["111K rows", "96.52% accuracy", "ROC-AUC 0.9952", "Artefact cleanup"],
+    title: "85.15%",
+    quote: "Retraining on the complete leakage-corrected dataset: 85.15% accuracy, ROC-AUC 0.9545.",
+    body:  "The expanded dataset of 111,499 merged rows was rebalanced via SMOTE to a 51,735/51,735 class distribution. Final evaluation: RF Accuracy 85.15%, ROC-AUC 0.9545, Fraud Precision 0.7682, Recall 0.9259, F1 0.8397. Stale model artefacts from discarded experiments — lightgbm.pkl, xgboost.pkl, xgboost.onnx, voting_ensemble.pkl, voting_ensemble.onnx — were removed from the repository. None were referenced by the active inference pipeline.",
+    tags:  ["111K rows", "85.15% accuracy", "ROC-AUC 0.9545", "Artefact cleanup"],
     owner: "ml",
     Icon:  Zap,
   },
@@ -156,6 +156,15 @@ const MILESTONES: Milestone[] = [
     tags:  ["dot-grid texture", "Amber FLAG", "Organisation transfer", "Cloudflare"],
     owner: "both",
     Icon:  Rocket,
+  },
+  {
+    date:  "Mar 12",
+    title: "Target Leakage Audit",
+    quote: "A ROC-AUC of 0.9952 on heterogeneous multi-source tabular data is a red flag, not a cause for celebration.",
+    body:  "A review of all dataset loaders found three target-leakage bugs. In _load_behavior_extended (34,423 rows) and _load_ton_iot, the is_new_device feature was a direct copy of the fraud label. In _load_cdr_fraud (24,543 rows), merchant_category was constructed by mapping fraud_type — the label source — to category strings. All three bugs are fixed: is_new_device set to 0.0 for the affected loaders; CDR rows use a flat \"UTILITY\" category. Models retrained: RF Accuracy 85.15%, ROC-AUC 0.9545, Recall 0.9259, F1 0.8397.",
+    tags:  ["Target leakage", "3 loaders fixed", "RF 85.15%", "ROC-AUC 0.9545"],
+    owner: "ml",
+    Icon:  SearchCode,
   },
 ];
 
@@ -174,7 +183,7 @@ const STORYBOARD = [
   {
     num:   "03",
     label: "The Outcome",
-    body:  "96.52% detection accuracy. ROC-AUC 0.9952. Sub-5ms P99 gateway latency. Four BIS money-mule typologies detected autonomously. Fraud alerts in 22 Indian languages, with legal citations embedded. Built, trained, and deployed to global edge in 11 days.",
+    body:  "85.15% detection accuracy. ROC-AUC 0.9545. Sub-5ms P99 gateway latency. Four BIS money-mule typologies detected autonomously. Fraud alerts in 22 Indian languages, with legal citations embedded. Recall 0.9259 — catches 93 in every 100 fraud transactions. Built, trained, and deployed to global edge in 12 days.",
   },
 ];
 

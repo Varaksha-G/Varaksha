@@ -55,9 +55,9 @@ const metrics = [
   },
   {
     kicker: "Model Performance",
-    value: "96.52%",
+    value: "85.15%",
     label: "Random Forest Accuracy",
-    sub: "111K rows · 7 real datasets",
+    sub: "111K rows · 7 real datasets · ROC-AUC 0.9545",
     source: "Varaksha · trained Mar 2026",
     accent: "bg-allow",           // green top-bar
     valueColor: "text-allow",

@@ -479,15 +479,11 @@ def _load_cdr_fraud(path: pathlib.Path) -> pd.DataFrame | None:
         seen.add(did)
     df["is_new_device"] = new_dev_flags
 
-    # merchant_category: telecom fraud type as category signal
-    _ft_map = {
-        "none":                "P2P",
-        "sim_box_fraud":       "GAMBLING",
-        "subscription_fraud":  "UTILITY",
-        "random_fraud":        "ECOM",
-        "call_masking":        "TRAVEL",
-    }
-    df["merchant_category"] = df["fraud_type"].map(_ft_map).fillna("P2P")
+    # merchant_category: all CDR rows are telecom/subscription traffic
+    # Previously mapped fraud_type → category, which leaked the label (every
+    # non-'none' fraud_type mapped to a non-P2P category, giving the model
+    # a near-perfect proxy for is_fraud).  Fixed: all rows use "UTILITY".
+    df["merchant_category"] = "UTILITY"
     df["transaction_type"] = "DEBIT"
 
     df.drop(columns=["caller_id", "receiver_id", "start_time", "sim_id",
@@ -538,7 +534,9 @@ def _load_supervised_behavior(path: pathlib.Path) -> pd.DataFrame | None:
 
     df["merchant_category"] = "ECOM"   # API-layer transactions map to e-commerce
     df["transaction_type"]  = "DEBIT"
-    df["is_new_device"]      = df[TARGET].astype(np.float32)   # anomalous sessions treated as new device
+    # is_new_device: no per-session device-novelty data in this loader — use 0
+    # (was erroneously copied from is_fraud, causing target leakage)
+    df["is_new_device"]      = 0.0
 
     df.drop(columns=["_id", "source", "ip_type", "classification"],
             inplace=True, errors="ignore")
@@ -581,7 +579,9 @@ def _load_behavior_extended(path: pathlib.Path) -> pd.DataFrame | None:
 
     df["merchant_category"] = "ECOM"
     df["transaction_type"]  = "DEBIT"
-    df["is_new_device"]      = df[TARGET].astype(np.float32)
+    # is_new_device: no per-session device-swap data in this dataset — use 0
+    # (was erroneously copied from is_fraud, causing target leakage)
+    df["is_new_device"]      = 0.0
 
     df.drop(columns=["_id", "source", "ip_type", "behavior", "behavior_type",
                      "classification"],
@@ -639,7 +639,9 @@ def _load_ton_iot(path: pathlib.Path) -> pd.DataFrame | None:
             df["proto"].str.lower().map(proto_map).fillna("DEBIT")
         )
 
-    df["is_new_device"] = df[TARGET].astype(np.float32)
+    # is_new_device: no per-packet device-novelty signal — use 0
+    # (was erroneously copied from is_fraud, causing target leakage)
+    df["is_new_device"] = 0.0
     df["device_type"]   = "WEB"   # network-layer traffic — map to web client
 
     df.drop(columns=["ts", "src_ip", "src_port", "dst_ip", "dst_port",

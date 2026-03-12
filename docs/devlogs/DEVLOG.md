@@ -460,7 +460,7 @@ not cite criminal statutes (incorrect legal framing for a mere suspicion).
 | Choice | Rationale |
 |--------|-----------|
 | `IsolationForest` contamination=0.02 | PaySim fraud rate is ~1.3%; 2% gives a small margin without flooding FLAG verdicts |
-| SMOTE before split | Resampling after split leaks synthetic samples into validation — SMOTE must precede `train_test_split` |
+| SMOTE on training split only | `train_test_split` runs first; SMOTE is applied to `X_train`/`y_train` only — the test set always reflects the natural class distribution |
 | Soft voting (RF + XGB) | Probability averaging smooths overconfident trees; hard voting loses calibration information |
 | `LabelEncoder` per column | Frequency encoding would leak test-set frequencies during training; LE is count-free |
 | `StandardScaler` | Tree ensembles are scale-invariant but IF benefits from normalised feature ranges |
@@ -554,20 +554,20 @@ Three new loaders added and wired into `load_and_merge_all()`:
 | UPI Transactions | 647 | 24.0% |
 | Customer_DF + cust_transaction_details | 168 | 36.3% |
 | CDR Realtime Fraud | 24,543 | 50.2% |
-| Supervised Behavior | 1,699 | varies |
-| Remaining Behavior Extended | 34,423 | varies |
-| ToN-IoT | 19 | varies |
+| Supervised Behavior | 1,699 | 34.9% |
+| Remaining Behavior Extended | 34,423 | 74.0% |
+| ToN-IoT | 19 | 57.9% |
 | **Merged total** | **111,499** | **42.0% (pre-SMOTE)** |
 
 SMOTE applied: 51,735 legit / 51,735 fraud after resampling.
 
 | Metric | Value |
 |---|---|
-| RF Accuracy | **96.52%** |
-| RF ROC-AUC | **0.9952** |
-| Fraud Precision | 0.9745 |
-| Fraud Recall | 0.9419 |
-| Fraud F1 | **0.9579** |
+| RF Accuracy | **85.15%** |
+| RF ROC-AUC | **0.9545** |
+| Fraud Precision | 0.7682 |
+| Fraud Recall | 0.9259 |
+| Fraud F1 | **0.8397** |
 
 #### Cleanup
 
@@ -611,12 +611,73 @@ Landing page metric card updated to reflect Phase 8 retrain results:
 
 | Field | Before | After |
 |---|---|---|
-| Accuracy | 94.4% | **96.52%** |
+| Accuracy | 94.4% | **85.15%** |
 | Training data note | 75K rows · 4 real datasets | **111K rows · 7 real datasets** |
 
 #### Repository transfer
 
 GitHub repository transferred from `Vibhor2702/Varaksha` to `Varaksha-G/Varaksha`. Remote updated locally via `git remote set-url`.
+
+---
+
+### Phase 10 — Target Leakage Audit + Loaders Fixed
+
+**Date:** March 12, 2026
+**Files:** `services/local_engine/train_ensemble.py`
+
+#### Problem identified
+
+Post-training ROC-AUC of **0.9952** was suspiciously high. A code review of every dataset loader revealed three target-leakage bugs — features that were mechanically derived from the fraud label, giving the model a direct or near-direct signal of the answer at training time.
+
+#### Leakage 1 — `_load_behavior_extended` (`is_new_device` = `is_fraud`)
+
+```python
+# BEFORE (leaking)
+df["is_new_device"] = df[TARGET].astype(np.float32)
+
+# AFTER
+df["is_new_device"] = 0.0   # no per-session device-novelty data in this loader
+```
+
+`remaining_behavior_ext.csv` contains 34,423 rows — the largest single contributor to the merged dataset. For all 34K rows `is_new_device` was a perfect copy of the label. The Random Forest trivially scored this subset, artificially pulling AUC to near-1.0.
+
+#### Leakage 2 — `_load_ton_iot` (`is_new_device` = `is_fraud`)
+
+Identical error in the ToN-IoT loader (19 rows). Fixed the same way.
+
+#### Leakage 3 — `_load_cdr_fraud` (`merchant_category` encodes `fraud_type`)
+
+```python
+# BEFORE (leaking)
+_ft_map = {
+    "none":               "P2P",       # ← legit
+    "sim_box_fraud":      "GAMBLING",  # ← fraud
+    "subscription_fraud": "UTILITY",   # ← fraud
+    "random_fraud":       "ECOM",      # ← fraud
+    "call_masking":       "TRAVEL",    # ← fraud
+}
+df["merchant_category"] = df["fraud_type"].map(_ft_map)
+
+# AFTER
+df["merchant_category"] = "UTILITY"   # all CDR = telecom subscription traffic
+```
+
+The fraud label is derived as `fraud_type != "none"`. The mapping above created a categorical feature where `"P2P"` = legit and every other value = fraud, across 24,543 rows. This is not just correlated — it is the label in a different column.
+
+#### Why the AUC looked plausible
+
+The three leakage sources each affected a different loader, so no single suspicious metric was visible by dataset. The overall AUC rise from 0.9869 (Phase 6) to 0.9952 (Phase 8) was attributed to "more data" — plausible on its face. The tell was that 0.9952 is unusually high for a tabular fraud problem with heterogeneous multi-source data that doesn't share a common distribution. Post-fix AUC: **0.9545**.
+
+#### Impact
+
+All three leakage bugs have been corrected in `train_ensemble.py`. Models retrained immediately. Final metrics: RF Accuracy **85.15%**, ROC-AUC **0.9545**, Fraud Precision 0.7682, Recall 0.9259, F1 0.8397.
+
+| Loader | Leakage type | Feature | Fix |
+|---|---|---|---|
+| `_load_behavior_extended` | Direct copy of label | `is_new_device = is_fraud` (34,423 rows) | Set `is_new_device = 0.0` |
+| `_load_supervised_behavior` | Direct copy of label | `is_new_device = is_fraud` (1,699 rows) | Set `is_new_device = 0.0` |
+| `_load_ton_iot` | Direct copy of label | `is_new_device = is_fraud` (19 rows) | Set `is_new_device = 0.0` |
+| `_load_cdr_fraud` | Label-derived categorical | `merchant_category` encodes `fraud_type` (24,543 rows) | Set `merchant_category = "UTILITY"` for all rows |
 
 ---
 

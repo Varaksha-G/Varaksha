@@ -19,7 +19,7 @@ Develop an AI/ML solution to identify fraudulent transactions in the Unified Pay
 | # | Objective | Varaksha Implementation |
 |---|---|---|
 | 1 | Implement **anomaly detection** techniques to identify unusual transaction patterns | `IsolationForest` trained on 111 K rows — 16 behavioural features including hour-of-day sin/cos, amount log-transform, device-seen flag |
-| 2 | Explore **ensemble methods or deep learning** to improve prediction accuracy | `RandomForest` (300 trees) fused with `IsolationForest` scores → composite risk 0–1; ROC-AUC **0.9952** |
+| 2 | Explore **ensemble methods or deep learning** to improve prediction accuracy | `RandomForest` (300 trees) fused with `IsolationForest` scores → composite risk 0–1; ROC-AUC **0.9545** |
 | 3 | Address **imbalanced datasets** using techniques like SMOTE | `imblearn.SMOTE` applied to training split only; held-out test set preserves natural 42 % fraud ratio |
 | 4 | Develop a **user-friendly dashboard** for visualising transaction risks and fraud alerts | Streamlit dashboard (`services/demo/app.py`) + full interactive Next.js 15 web UI with live transaction simulator, evidence report, and 8-language audio alert |
 | 5 | Create **real-time monitoring** systems for immediate threat detection | Rust Actix-Web gateway with lock-free `DashMap` consortium cache — P99 < 5 ms verdict; async graph analysis off the hot path |
@@ -83,7 +83,7 @@ Placing a GIL-bound Python process inside a payment's synchronous path introduce
 
 ### Why a consortium cache?
 
-A single bank sees a vanishingly small slice of a mule's activity. The `DashMap` risk cache acts as a shared memory across institutions — a VPA flagged by Bank A is immediately visible to Banks B and C on the next transaction, without either side ever exchanging raw account data (SHA-256 hashing ensures no PII crosses the network boundary).
+A single bank sees a vanishingly small slice of a mule's activity. The `risk-cache` crate (a separate Rust workspace member) exposes a `DashMap`-backed `RiskCache` to the gateway — a VPA flagged by Bank A is immediately visible to Banks B and C on the next transaction, without either side ever exchanging raw account data (SHA-256 hashing ensures no PII crosses the network boundary).
 
 ---
 
@@ -188,8 +188,16 @@ varaksha/
 │   ├── Cargo.toml
 │   └── src/
 │       ├── main.rs                 # HTTP server, endpoint handlers
-│       ├── cache.rs                # DashMap risk cache
 │       └── models.rs               # Request/response structs
+│
+├── risk-cache/                     ← Rust workspace crate: DashMap consortium cache
+│   ├── Cargo.toml                  #   dashmap = "5" dependency
+│   └── src/
+│       ├── lib.rs
+│       ├── cache.rs                # RiskCache — DashMap<String, RiskEntry>
+│       ├── entry.rs                # RiskEntry struct (score, timestamp)
+│       ├── cleaner.rs              # Background TTL expiry task
+│       └── metrics.rs              # Cache hit/miss counters
 │
 ├── services/
 │   ├── local_engine/
@@ -200,7 +208,7 @@ varaksha/
 │   ├── agents/
 │   │   └── agent03_accessible_alert.py  ← Layer 4: LLM + NMT + pre-gen TTS MP3s
 │   └── demo/
-│       └── app.py                  ← Layer 5: Streamlit dashboard
+│       └── app.py                  ← Layer 4+5: Streamlit analyst dashboard (local)
 │
 ├── data/
 │   ├── models/                     ← ONNX artefacts (committed)
@@ -255,195 +263,3 @@ All files go under `data/datasets/`. The trainer auto-discovers and merges every
 
 A security engineer and an ML engineer who share the view that robust fraud detection requires both disciplines to operate at the same layer of the stack — not sequentially, but together.
 
-
-```
-External UPI Client
-        │
-        ▼
-┌───────────────────────────────────────────────────────┐
-│  Layer 2 — Rust Gateway  (port 8082)                  │
-│  • DashMap consortium risk cache                      │
-│  • SHA-256 VPA hashing (no PII stored)                │
-│  • Verdicts: ALLOW / FLAG / BLOCK  (<5 ms P99)        │
-└───────────────────┬───────────────────────────────────┘
-                    │ async webhook
-        ┌───────────┴───────────┐
-        ▼                       ▼
-┌──────────────┐      ┌──────────────────────────┐
-│  Layer 1     │      │  Layer 3                 │
-│  ML Engine   │      │  Graph Agent (NetworkX)  │
-│  RF-300 + IF │      │  Fan-out / Fan-in / Cycle│
-│  16 features │      │  → pushes risk to cache  │
-└──────────────┘      └──────────────────────────┘
-                                │
-                                ▼
-                    ┌──────────────────────────┐
-                    │  Layer 4                 │
-                    │  Accessible Alert Agent  │
-                    │  LLM + Multilingual NMT  │
-                    │  + edge-tts (8 languages)│
-                    └──────────────────────────┘
-                                │
-                                ▼
-                    ┌──────────────────────────┐
-                    │  Layer 5 — Dashboard     │
-                    │  Streamlit (local demo)  │
-                    │  Next.js 15 (web UI)     │
-                    └──────────────────────────┘
-```
-
----
-
-## Hackathon "Bible" Compliance
-
-| Requirement | Implementation |
-|---|---|
-| Anomaly Detection | IsolationForest (`services/local_engine/train_ensemble.py`) |
-| Ensemble Methods | RandomForest (300 estimators, RF-only; XGBoost/LightGBM dropped for 512 MB memory budget) |
-| SMOTE for imbalanced data | `imblearn.over_sampling.SMOTE` applied to training split only |
-| User-friendly Dashboard | Streamlit (`services/demo/app.py`) with Plotly graph |
-| Real-Time Monitoring | Rust DashMap cache (`gateway/`) — sub-5 ms lookups |
-
----
-
-## Quick Start
-
-### 1. Install Python dependencies
-```powershell
-pip install -r requirements.txt
-```
-
-### 2. Train the ML models (Layer 1)
-```powershell
-python services/local_engine/train_ensemble.py
-```
-The script auto-discovers all datasets under `data/datasets/` and merges them.
-Pre-trained ONNX models (`varaksha_rf_model.onnx`, `isolation_forest.onnx`, `scaler.onnx`) are checked in and ready to use without retraining.
-
-### 3. Build and run the Rust gateway (Layer 2)
-```powershell
-cd gateway
-cargo build --release
-cargo run --release
-# Gateway listens on http://localhost:8082
-```
-
-### 4. Run the graph agent (Layer 3)
-```powershell
-python services/graph/graph_agent.py --dry-run
-```
-
-### 5. Test the accessible alert (Layer 4)
-```powershell
-python services/agents/agent03_accessible_alert.py
-```
-
-### 6. Launch the dashboard (Layer 5)
-```powershell
-# Streamlit (local introspection)
-streamlit run services/demo/app.py
-
-# Next.js web UI (dev server)
-cd frontend
-npm install
-npm run dev
-# → http://localhost:3000
-```
-
----
-
-## Training Results
-
-Model trained on 111,499 real rows from 7 datasets (March 2026 retrain):
-
-| Metric | Value |
-|---|---|
-| RandomForest Accuracy | **96.52%** |
-| ROC-AUC | **0.9952** |
-| Fraud Precision | 0.9745 |
-| Fraud Recall | 0.9419 |
-| Fraud F1 | **0.9579** |
-
-| Dataset | Rows | Fraud % |
-|---|---|---|
-| PaySim (stratified) | 50,000 | 16.4% |
-| UPI Transactions | 647 | 24.0% |
-| Customer_DF + cust_transaction_details | 168 | 36.3% |
-| CDR Realtime Fraud | 24,543 | 50.2% |
-| Supervised Behavior (API anomaly) | 1,699 | varies |
-| Remaining Behavior Extended | 34,423 | varies |
-| ToN-IoT network intrusion | 19 | varies |
-| **Total** | **111,499** | **42.0% (pre-SMOTE)** |
-
----
-
-## Project Structure
-
-```
-varaksha/
-├── frontend/                       ← Next.js 15 web UI (Cloudflare Pages)
-│   ├── app/
-│   │   ├── page.tsx                # Landing page
-│   │   ├── flow/page.tsx           # How-it-works flow
-│   │   └── live/page.tsx           # Live transaction demo
-│   └── next.config.ts              # output: "export" for Cloudflare Pages
-│
-├── gateway/                        ← Layer 2: Rust Actix-Web gateway
-│   ├── Cargo.toml
-│   └── src/
-│       ├── main.rs                 # HTTP server, endpoint handlers
-│       ├── cache.rs                # DashMap risk cache
-│       └── models.rs               # Request/response structs
-│
-├── services/
-│   ├── local_engine/
-│   │   ├── train_ensemble.py       ← Layer 1: RF-only (300 trees) + IF + SMOTE
-│   │   └── infer.py                ← ONNX scoring engine (16 features)
-│   ├── graph/
-│   │   └── graph_agent.py          ← Layer 3: NetworkX mule detection
-│   ├── agents/
-│   │   └── agent03_accessible_alert.py  ← Layer 4: LLM + NMT + TTS
-│   └── demo/
-│       └── app.py                  ← Layer 5: Streamlit dashboard
-│
-├── data/
-│   ├── models/                     ← ONNX model artefacts (committed)
-│   │   ├── varaksha_rf_model.onnx  #   RF-300 (6.2 MB)
-│   │   ├── isolation_forest.onnx   #   IsolationForest (1.3 MB)
-│   │   ├── scaler.onnx             #   StandardScaler
-│   │   └── feature_meta.json       #   Feature schema (16 features)
-│   └── datasets/
-│       └── README.md               ← dataset download instructions
-│
-├── Cargo.toml                      ← root Rust workspace (gateway + risk-cache)
-└── requirements.txt
-```
-
----
-
-## Key Design Decisions
-
-- **Privacy:** VPAs are SHA-256 hashed before entering the Rust process. Raw PII never touches the cache.
-- **Latency:** Graph analytics (heavy) run async, completely outside the payment path. The Rust DashMap lookup is the only thing in the hot path.
-- **Accessibility:** `edge-tts` requires no API key — uses the free Microsoft Edge TTS endpoint. Multilingual NMT templates cover 8 Indian languages (EN, HI, TA, TE, BN, MR, GU, KN); swap `_translate_warning()` in `agent03_accessible_alert.py` for a real NMT API (e.g. IndicTrans2 or any ULCA-compliant service) in production.
-- **SMOTE boundary:** Applied to the training split *only* — the test set always reflects the real class distribution.
-
----
-
-## Datasets
-
-See [data/datasets/README.md](data/datasets/README.md) for download instructions.
-
-Datasets used for training (place under `data/datasets/`):
-
-| Dataset | Source |
-|---|---|
-| PaySim (`PS_20174392719_*.csv`) | [Kaggle — López-Rojas 2016](https://www.kaggle.com/datasets/rupakroy/online-payments-fraud-detection-dataset) |
-| UPI Transactions (`Untitled spreadsheet - upi_transactions.csv`) | Self-generated synthetic |
-| Customer_DF + cust_transaction_details | Kaggle credit-fraud datasets |
-| CDR Realtime Fraud | Kaggle telecom fraud dataset |
-| Supervised Behavior (`supervised_dataset.csv`) | API behavior anomaly dataset |
-| Remaining Behavior Extended (`remaining_behavior_ext.csv`) | Extended behavior classification dataset |
-| ToN-IoT (`ton-iot.csv`) | IoT network intrusion dataset |
-
-If no datasets are present, `train_ensemble.py` falls back to numpy synthetic generation (hackathon offline mode).
