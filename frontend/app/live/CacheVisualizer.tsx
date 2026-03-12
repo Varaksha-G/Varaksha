@@ -222,7 +222,7 @@ export function CacheVisualizer() {
             animate={{ opacity: running ? [1, 0.15, 1] : 1 }}
             transition={running ? { duration: 0.55, repeat: Infinity } : {}}
           />
-          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/40">
+          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/60 font-semibold">
             Module C — Rust DashMap Cache
           </span>
         </div>

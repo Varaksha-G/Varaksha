@@ -156,16 +156,16 @@ export default function PitchPage() {
         {/* Subheadline */}
         <motion.p
           variants={fadeUp}
-          className="font-playfair italic text-ink/70 mb-10"
+          className="font-playfair italic text-ink/80 mb-10"
           style={{ fontSize: "clamp(1.1rem, 2.4vw, 1.9rem)" }}
         >
-          UPI Fraud Defense Network &mdash; Version II
+          UPI Fraud Defense Network
         </motion.p>
 
         {/* Decorative rule */}
         <motion.div variants={fadeIn} className="flex items-center gap-4">
           <div className="w-14 h-[2px] bg-saffron" />
-          <span className="font-barlow text-[0.62rem] tracking-[0.28em] uppercase text-ink/30">
+          <span className="font-barlow text-[0.62rem] tracking-[0.28em] uppercase text-ink/60 font-semibold">
             Rust &middot; Random Forest &middot; IsolationForest &middot; NetworkX &middot; edge-tts
           </span>
           <div className="flex-1 h-px bg-ink/10" />

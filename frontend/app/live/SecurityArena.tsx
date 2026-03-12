@@ -108,7 +108,7 @@ function logLineClass(c: LogColor): string {
   if (c === "hindi")   return "text-saffron/90 font-medium";
   if (c === "gateway") return "text-cream/70";
   if (c === "layer")   return "text-cream/45";
-  return "text-cream/30";   // info + fallback
+  return "text-cream/50 font-semibold";   // info + fallback
 }
 
 function timestampBadge(c: LogColor): string {
@@ -176,7 +176,7 @@ export function SecurityArena() {
             animate={running ? { opacity: [1, 0.2, 1] } : { opacity: 1 }}
             transition={running ? { duration: 0.55, repeat: Infinity } : {}}
           />
-          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/40">
+          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/60 font-semibold">
             Module D — Security Arena
           </span>
         </div>

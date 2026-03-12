@@ -233,7 +233,7 @@ export function LegalReport() {
       <div className="flex items-center justify-between px-5 py-3 border-b border-cream/[0.07] bg-cream/[0.025]">
         <div className="flex items-center gap-2.5">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-block" />
-          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/40">
+          <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/60 font-semibold">
             Module E — Legal Report & Accessible Alert
           </span>
         </div>
@@ -350,7 +350,7 @@ export function LegalReport() {
             </p>
 
             {/* Secondary — extended personalised alert */}
-            <p className="font-barlow text-[0.78rem] text-cream/40 leading-relaxed mb-5">
+            <p className="font-barlow text-[0.78rem] text-cream/60 font-semibold leading-relaxed mb-5">
               {alertT.secondary}
             </p>
 
@@ -452,7 +452,7 @@ export function LegalReport() {
               dlState === "done"
                 ? "bg-allow/15 border border-allow/25 text-allow cursor-default"
                 : dlState === "generating"
-                  ? "bg-cream/[0.06] border border-cream/10 text-cream/30 cursor-not-allowed"
+                  ? "bg-cream/[0.06] border border-cream/20 text-cream/40 font-semibold cursor-not-allowed"
                   : "bg-block text-cream border border-block hover:bg-block/85 cursor-pointer shadow-[0_3px_24px_rgba(192,57,43,0.18)]"
             }`}
           >
@@ -564,7 +564,7 @@ export function LegalReport() {
                 code:  "RBI 2FA 2026",
                 title: "Risk-Based Monitoring",
                 desc:  "Varaksha is the mandated dynamic risk-scoring layer.",
-                color: "text-cream/40",
+                color: "text-cream/60 font-semibold",
               },
             ].map((law) => (
               <div key={law.code} className="border-b border-cream/[0.05] py-3.5 last:border-0">

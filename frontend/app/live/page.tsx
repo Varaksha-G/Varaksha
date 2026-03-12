@@ -368,7 +368,7 @@ function IntelSandbox() {
             {/* Label */}
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-barlow text-[0.6rem] tracking-widest uppercase text-cream/30 shrink-0">
+                <span className="font-barlow text-[0.6rem] tracking-widest uppercase text-cream/50 shrink-0 font-semibold">
                   {i + 1}.
                 </span>
                 <span
@@ -516,7 +516,7 @@ function IntelSandbox() {
               </div>
               <span
                 className={`font-barlow text-[0.72rem] transition-colors ${
-                  form.newDevice ? "text-block" : "text-cream/30"
+                  form.newDevice ? "text-block font-semibold" : "text-cream/50 font-semibold"
                 }`}
               >
                 {form.newDevice ? "First-seen device" : "Known device"}
@@ -656,7 +656,7 @@ function TransactionFeed() {
             className={`font-barlow text-[0.54rem] tracking-[0.22em] uppercase border px-2.5 py-1 transition-colors ${
               paused
                 ? "border-saffron/40 text-saffron hover:bg-saffron/10"
-                : "border-cream/15 text-cream/30 hover:border-cream/30 hover:text-cream/50"
+                : "border-cream/30 text-cream/50 hover:border-cream/60 hover:text-cream/70 font-semibold"
             }`}
           >
             {paused ? "▶ Resume" : "⏸ Pause"}
@@ -686,7 +686,7 @@ function TransactionFeed() {
                 i === 0 && !paused ? "bg-cream/[0.025]" : ""
               }`}
             >
-              <span className="font-courier text-[0.6rem] text-cream/30 tabular-nums">
+              <span className="font-courier text-[0.6rem] text-cream/50 font-semibold tabular-nums">
                 {row.ts}
               </span>
               <span className="font-courier text-[0.65rem] text-cream/55 truncate">
@@ -891,7 +891,7 @@ function MLModelModule() {
                     >
                       {m.letter}
                     </span>
-                    <span className="font-courier text-[0.56rem] text-cream/30">{m.code}</span>
+                    <span className="font-courier text-[0.56rem] text-cream/50 font-semibold">{m.code}</span>
                   </div>
                   <h3 className="font-playfair font-bold text-cream text-lg leading-tight">
                     {m.name}
@@ -937,7 +937,7 @@ function MLModelModule() {
                   {m.metrics.map((met) => (
                     <div key={met.label}>
                       <div className="flex justify-between mb-0.5">
-                        <span className="font-barlow text-[0.50rem] tracking-[0.14em] uppercase text-cream/30">
+                        <span className="font-barlow text-[0.50rem] tracking-[0.14em] uppercase text-cream/50 font-semibold">
                           {met.label}
                         </span>
                         <span className="font-courier text-[0.58rem] text-cream/60">{met.value}</span>

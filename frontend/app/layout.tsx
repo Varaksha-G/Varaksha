@@ -1,35 +1,11 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Barlow, Courier_Prime } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 
 // ── Font Definitions ──────────────────────────────────────────────────────────
-// Each font is assigned a CSS custom property (variable) that Tailwind picks
-// up via fontFamily in tailwind.config.ts.
-
-const playfairDisplay = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "700", "900"],
-  style: ["normal", "italic"],
-  variable: "--font-playfair",
-  display: "swap",
-});
-
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal"],
-  variable: "--font-barlow",
-  display: "swap",
-});
-
-const courierPrime = Courier_Prime({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal"],
-  variable: "--font-courier",
-  display: "swap",
-});
+// Fonts are self-hosted from public/fonts/ via @font-face in globals.css.
+// The CSS custom properties are applied to the html element below.
+// Tailwind fontFamily config references these custom properties as fallbacks.
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
@@ -49,14 +25,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`
-        ${playfairDisplay.variable}
-        ${barlow.variable}
-        ${courierPrime.variable}
-      `}
     >
       {/*
-       * font-barlow  → body copy
+       * font-barlow  → body copy (self-hosted from public/fonts/)
        * bg-cream     → #F0F4F8 cold off-white base
        * text-ink     → #0F1E2E deep navy
        * antialiased  → subpixel rendering
@@ -82,7 +53,7 @@ export default function RootLayout({
                 <Link
                   key={href}
                   href={href}
-                  className="group relative font-barlow text-[0.65rem] tracking-[0.22em] uppercase text-ink/50 hover:text-ink px-3 py-1.5 rounded-sm cursor-pointer transition-all duration-200 hover:bg-ink/[0.06] active:scale-95"
+                  className="group relative font-barlow text-[0.65rem] tracking-[0.22em] uppercase text-ink/70 hover:text-ink px-3 py-1.5 rounded-sm cursor-pointer transition-all duration-200 hover:bg-ink/[0.06] active:scale-95 font-semibold"
                 >
                   {label}
                   {/* animated underline */}
@@ -134,15 +105,15 @@ export default function RootLayout({
         <footer className="border-t border-ink/[0.07] mt-0 py-4 px-6 lg:px-12">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <p className="font-barlow text-[0.6rem] text-ink/35 leading-relaxed max-w-2xl">
-              <span className="font-semibold text-ink/50">Demo prototype.</span>{" "}
+              <span className="font-semibold text-ink/70">Demo prototype.</span>{" "}
               No personal data is collected or transmitted. All transactions on this site use synthetic data.
               {" "}Varaksha backend deployments must obtain user consent per{" "}
-              <span className="text-ink/50">DPDP Act 2023 §4(1)</span>{" "}or invoke the{" "}
-              <span className="text-ink/50">§7(g) Legitimate Use for Security</span>{" "}exemption before processing real VPAs.
+              <span className="text-ink/70 font-semibold">DPDP Act 2023 §4(1)</span>{" "}or invoke the{" "}
+              <span className="text-ink/70 font-semibold">§7(g) Legitimate Use for Security</span>{" "}exemption before processing real VPAs.
             </p>
             <p className="font-barlow text-[0.58rem] text-ink/25 shrink-0">
               Grievances:{" "}
-              <span className="text-ink/40">privacy@varaksha.dev</span>
+              <span className="text-ink/60 font-semibold">privacy@varaksha.dev</span>
             </p>
           </div>
         </footer>

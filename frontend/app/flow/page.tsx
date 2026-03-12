@@ -327,7 +327,7 @@ function StepDetail({ step, idx }: { step: StepDef; idx: number }) {
             animate={{ opacity: [1, 0.25, 1] }}
             transition={{ duration: 0.95, repeat: Infinity }}
           />
-          <span className="font-barlow text-[0.58rem] tracking-[0.26em] uppercase text-ink/40">
+          <span className="font-barlow text-[0.58rem] tracking-[0.26em] uppercase text-ink/60 font-semibold">
             {step.layer}
           </span>
           {step.isAsync && (
@@ -716,11 +716,11 @@ export default function FlowPage() {
                     <button
                       onClick={handlePrev}
                       disabled={currentStep === 0}
-                      className="inline-flex items-center gap-2 font-barlow text-[0.72rem] tracking-[0.18em] uppercase px-5 py-2.5 border border-ink/20 text-ink/50 hover:border-ink/50 hover:text-ink transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                      className="inline-flex items-center gap-2 font-barlow text-[0.72rem] tracking-[0.18em] uppercase px-5 py-2.5 border border-ink/30 text-ink/70 hover:border-ink/60 hover:text-ink transition-colors disabled:opacity-25 disabled:pointer-events-none font-semibold"
                     >
                       &larr; Back
                     </button>
-                    <span className="font-courier text-[0.62rem] tracking-widest text-ink/30">
+                    <span className="font-courier text-[0.62rem] tracking-widest text-ink/60 font-semibold">
                       {currentStep + 1} / {STEPS.length}
                     </span>
                     <button

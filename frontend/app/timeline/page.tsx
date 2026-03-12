@@ -340,7 +340,7 @@ function Card({ ms, side }: { ms: Milestone; side: "left" | "right" | "center" }
       <div className="bg-white/55 backdrop-blur-sm px-5 py-5 lg:px-6 lg:py-6 transition-shadow duration-300 group-hover:shadow-[0_4px_24px_rgba(15,30,46,0.07)]">
         <div className="flex items-start justify-between gap-4 mb-3">
           <Chip owner={ms.owner} />
-          <span className="font-courier text-[0.6rem] tracking-[0.14em] text-ink/40 whitespace-nowrap pt-px">
+          <span className="font-courier text-[0.6rem] tracking-[0.14em] text-ink/60 font-semibold whitespace-nowrap pt-px">
             {ms.date}
           </span>
         </div>
@@ -407,12 +407,12 @@ export default function TimelinePage() {
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           <a
             href="/"
-            className="font-barlow text-[0.58rem] tracking-[0.24em] uppercase text-ink/30 hover:text-saffron transition-colors"
+            className="font-barlow text-[0.58rem] tracking-[0.24em] uppercase text-ink/60 font-semibold hover:text-saffron transition-colors"
           >
             &larr;&thinsp;Varaksha
           </a>
           <span className="text-ink/15 select-none">|</span>
-          <span className="font-barlow text-[0.58rem] tracking-[0.24em] uppercase text-ink/30">
+          <span className="font-barlow text-[0.58rem] tracking-[0.24em] uppercase text-ink/60 font-semibold">
             Build Timeline
           </span>
         </div>
