@@ -1,7 +1,9 @@
 # Varaksha — Development Log
 
-> Written March 10–11, 2026. Records every architectural decision, rebuild rationale,
+> Written March 10–12, 2026. Records every architectural decision, rebuild rationale,
 > layer-by-layer implementation note, and current open items for the test branch.
+
+> **Maintenance rule** (added Mar 12, 2026): every major change — model retrain, new feature, architectural shift, bug fix with metric impact, or deployment — must receive a dated Phase entry in this log. For a point-in-time snapshot of what exists in the repo, see [`current_state.md`](./current_state.md).
 
 ---
 
@@ -19,6 +21,8 @@
   - [Phase 7 — Frontend Dashboard: Next.js 15](#phase-7--frontend-dashboard-nextjs-15)
   - [Phase 8 — Dataset Audit + Retrain on 111K Rows](#phase-8--dataset-audit--retrain-on-111k-rows)
   - [Phase 9 — UI Polish: Textures, Colour Tokens, Live Page](#phase-9--ui-polish-textures-colour-tokens-live-page)
+  - [Phase 10 — Target Leakage Audit + Loaders Fixed](#phase-10--target-leakage-audit--loaders-fixed)
+  - [Phase 11 — Font Visibility + Timeline Polish](#phase-11--font-visibility--timeline-polish)
 - [Directory Map](#directory-map)
 - [Architecture Deep-Dive](#architecture-deep-dive)
   - [Why Five Separate Layers?](#why-five-separate-layers)
@@ -682,6 +686,53 @@ All four leakage bugs have been corrected in `train_ensemble.py`. Models retrain
 | `_load_supervised_behavior` | Direct copy of label | `is_new_device = is_fraud` (1,699 rows) | Set `is_new_device = 0.0` |
 | `_load_ton_iot` | Direct copy of label | `is_new_device = is_fraud` (19 rows) | Set `is_new_device = 0.0` |
 | `_load_cdr_fraud` | Label-derived categorical | `merchant_category` encodes `fraud_type` (24,543 rows) | Set `merchant_category = "UTILITY"` for all rows |
+
+---
+
+### Phase 11 — Font Visibility & Timeline Polish
+
+**Date:** March 12, 2026  
+**Commit:** `cb9ef30`  
+**Files:** `frontend/app/timeline/page.tsx`, `frontend/app/page.tsx`, `frontend/app/flow/page.tsx`, `docs/devlogs/DEVLOG.md`, `docs/devlogs/current_state.md`, `README.md`
+
+#### Changes
+
+**Stats corrected across all surfaces** (second retrain after 4th leakage fix had produced 85.24%/0.9546 vs the 85.15%/0.9545 first recorded):
+
+| Surface | Before | After |
+|---|---|---|
+| `README.md` Training Results table | 96.52% / 0.9952 (pre-leakage numbers) | **85.24% / 0.9546** |
+| `README.md` Objectives row | ROC-AUC 0.9545 | **0.9546** |
+| `docs/devlogs/DEVLOG.md` Phase 8 table | 85.15% / 0.9545 | **85.24% / 0.9546** |
+| `frontend/app/page.tsx` stat card | 85.15% / 0.9545 | **85.24% / 0.9546** |
+| `frontend/app/timeline/page.tsx` milestones 10, 12 + storyboard | 85.15% / 0.9545 | **85.24% / 0.9546** |
+
+**DEVLOG also corrected:** "three" → "four" leakage bugs; added `_load_supervised_behavior` as a named Leakage 2 entry (previously absent from the prose).
+
+**Timeline card readability:**
+- Body text: `0.71rem / text-ink/48` → `0.82rem / text-ink/65`
+- Quote: `0.8rem / 85%` → `0.88rem / 90%`
+- Date stamp: `0.48rem / ink/25` → `0.6rem / ink/40`
+- Tag chips: `0.45rem` → `0.58rem`
+- Owner chip labels: `0.5rem` → `0.63rem`
+- Section containers: `max-w-5xl` → `max-w-6xl` (more horizontal space)
+- Timeline section: `px-4 lg:px-12` → `px-3 sm:px-6 lg:px-10` (tighter mobile padding)
+- All 12 milestone body texts shortened to 2–3 sentences; full narrative remains in DEVLOG
+
+**Storyboard & future-scope:**
+- Storyboard body: `0.72rem / ink/48` → `0.8rem / ink/62`
+- Future scope blurbs: `0.64rem / ink/40` → `0.72rem / ink/55`
+
+**Global font visibility (`page.tsx`, `flow/page.tsx`):**
+- Metric card sub-labels: `ink/42` → `ink/55`
+- Hero italic tagline: `ink/60` → `ink/70`
+- Flow page step kickers + secondary text: `ink/42` / `ink/45` → `ink/58`
+
+**Documentation:**
+- Created `docs/devlogs/current_state.md` — spec sheet + architecture reference snapshot
+- Added maintenance rule to DEVLOG header: every major change requires a dated Phase entry
+
+**Deploy:** `8dfb8b4b.varaksha.pages.dev`
 
 ---
 
