@@ -30,12 +30,12 @@ Develop an AI/ML solution to identify fraudulent transactions in the Unified Pay
 
 UPI processes over **14 billion transactions a month**. A fraudulent ₹99,999 transfer can drain a victim's account in under 3 seconds — well before any human intervention is possible.
 
-We're two people: one with a background in systems security and one in machine learning. We kept disagreeing on where the real problem was — until we realised we were both right. The fraud pipeline breaks at *two* different points:
+Varaksha G is a two-person team: one specialising in systems security, one in machine learning. Working across disciplines made clear that UPI fraud is not a single problem — it is two compounding failures:
 
-1. **The ML side** — models trained in isolation, on unbalanced synthetic data, with no memory of what the consortium has already flagged.
-2. **The security side** — latency-critical payment paths that can't afford a Python process in the hot loop, and alert systems that silently fail non-English speakers.
+1. **The ML side** — models trained in isolation on unbalanced data, with no shared memory of what peer institutions have already flagged.
+2. **The security side** — latency-critical payment paths that cannot absorb a Python process in the synchronous loop, and alert systems that silently fail the majority of India's non-English-speaking population.
 
-Varaksha is our answer to both: a privacy-preserving, multilingual fraud intelligence network where a **Rust gateway** handles the sub-10 ms verdict path, a **machine-learning ensemble** provides the actual risk signal, and a **graph + alert layer** closes the loop with human-readable evidence — in 8 Indian languages.
+Varaksha addresses both: a privacy-preserving, multilingual fraud intelligence network where a **Rust gateway** handles the sub-10 ms verdict path, a **machine-learning ensemble** provides the risk signal, and a **graph + alert layer** delivers human-readable evidence in 8 Indian languages.
 
 ---
 
@@ -79,7 +79,7 @@ External UPI Client
 
 ### Why Rust for the gateway?
 
-The security engineer's insistence. Python is fine for training, inference, and graph analytics — but placing a GIL-bound process inside a payment's synchronous path is asking for tail-latency disasters under burst load. Rust's `actix-web` + `DashMap` gives us lock-free concurrent reads, compile-time memory safety, and P99 < 5 ms with no warm-up.
+Placing a GIL-bound Python process inside a payment's synchronous path introduces serious tail-latency risk under burst load. Rust's `actix-web` + `DashMap` delivers lock-free concurrent reads, compile-time memory safety, and P99 < 5 ms with no JVM-style warm-up — properties that matter when a fraudulent transfer completes in under 3 seconds.
 
 ### Why a consortium cache?
 
@@ -251,9 +251,9 @@ All files go under `data/datasets/`. The trainer auto-discovers and merges every
 
 ## Team
 
-**Varaksha G** — BITSGOA Secure AI Software and Systems Hackathon
+**Varaksha G** — Secure AI Software and Systems Hackathon, BITSGOA
 
-> *"We spent the first day arguing about whether the threat model was a data science problem or a systems security problem. Turns out it was both."*
+A security engineer and an ML engineer who share the view that robust fraud detection requires both disciplines to operate at the same layer of the stack — not sequentially, but together.
 
 
 ```
