@@ -322,12 +322,15 @@ async fn stream_tx(data: web::Data<Arc<AppState>>) -> impl Responder {
             };
 
             let now = chrono::Local::now().format("%H:%M:%S").to_string();
-            let sender = tx.vpa.clone();
-            let receiver = receivers[rng.gen_range(0..receivers.len())].to_string();
+            let receiver_vpa = receivers[rng.gen_range(0..receivers.len())].to_string();
+            let sender_hash = hash_vpa(&tx.vpa);
+            let receiver_hash = hash_vpa(&receiver_vpa);
+            let sender = format!("tx_{}", &sender_hash[..12]);
+            let receiver = format!("rx_{}", &receiver_hash[..12]);
             let amount = tx.amount;
             let category = tx.merchant_category.clone();
 
-            let vpa_hash = hash_vpa(&tx.vpa);
+            let vpa_hash = sender_hash;
             let (risk_score, reason) = match score_via_sidecar(state.as_ref(), &tx).await {
                 Ok(v) => v,
                 Err(_) => (0.0, "sidecar unavailable".to_string()),
