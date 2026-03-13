@@ -264,15 +264,15 @@ All stored in `data/datasets/`:
 | File | Rows used | Source |
 |---|---|---|
 | `PS_20174392719_1491204439457_log.csv` | 50,000 (stratified) | PaySim synthetic mobile money |
-| `Untitled spreadsheet - upi_transactions.csv` | 647 | UPI transaction records (synthetic) |
-| `Customer_DF (1).csv` + `cust_transaction_details (1).csv` | 168 | Customer behaviour (joined on customerEmail) |
-| `realtime_cdr_fraud_dataset.csv` | 24,543 | Telecom CDR fraud dataset |
+| `Untitled spreadsheet - upi_transactions.csv` | 647 | UPI transaction records |
+| `customer_df.csv` + `cust_transaction_details.csv` | 168 | Customer behaviour |
+| CDR Realtime Fraud | 24,543 | Telecom CDR fraud dataset |
 | `supervised_dataset.csv` | 1,699 | API behaviour anomaly |
 | `remaining_behavior_ext.csv` | 34,423 | Bot / attack / outlier behaviour |
 | `ton-iot.csv` | 19 | IoT network intrusion (ToN-IoT) |
 | **Merged total** | **111,499** | 42.0% fraud pre-SMOTE |
 
-Legacy artefacts in `data/datasets/` (`prompt_injections.json`, `jailbreakbench-main/`) are not used by the V2 training pipeline.
+Also includes `prompt_injections.json` and `jailbreakbench-main/` for the prompt guard model.
 
 ---
 

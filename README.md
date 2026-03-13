@@ -240,12 +240,12 @@ All files go under `data/datasets/`. The trainer auto-discovers and merges every
 
 | # | File | Rows | Fraud % | Source |
 |---|---|---|---|---|
-| 1 | `PS_20174392719_1491204439457_log.csv` | 50,000 *(stratified)* | 16.4 % | [Kaggle PaySim](https://www.kaggle.com/datasets/ealaxi/paysim1) |
+| 1 | `PS_20174392719_1491204439457_log.csv` | 50,000 *(stratified)* | 16.4 % | [Kaggle — PaySim Online Payments Fraud Detection](https://www.kaggle.com/datasets/rupakroy/online-payments-fraud-detection-dataset) |
 | 2 | `Untitled spreadsheet - upi_transactions.csv` | 647 | 24.0 % | Self-generated synthetic UPI transactions (matches problem statement's 660-row dataset spec) |
-| 3 | `Customer_DF (1).csv` + `cust_transaction_details (1).csv` | 168 | 36.3 % | Kaggle credit-fraud behaviour dataset (URL not recorded) |
-| 4 | `realtime_cdr_fraud_dataset.csv` | 24,543 | 50.2 % | Kaggle telecom CDR fraud dataset (URL not recorded) |
-| 5 | `supervised_dataset.csv` | 1,699 | varies | API behaviour anomaly dataset (URL not recorded) |
-| 6 | `remaining_behavior_ext.csv` | 34,423 | varies | Extended behaviour dataset (URL not recorded) |
+| 3 | `customer_df.csv` + `cust_transaction_details.csv` | 168 | 36.3 % | Kaggle credit-fraud behaviour datasets |
+| 4 | `cdr_realtime_fraud.csv` | 24,543 | 50.2 % | Kaggle telecom CDR realtime fraud dataset |
+| 5 | `supervised_dataset.csv` | 1,699 | varies | API behavioural anomaly dataset |
+| 6 | `remaining_behavior_ext.csv` | 34,423 | varies | Extended behavioural classification dataset |
 | 7 | `ton-iot.csv` | 19 | varies | [ToN-IoT — IoT/IIoT network intrusion](https://research.unsw.edu.au/projects/toniot-datasets) |
 | — | *(fallback)* | synthetic | — | NumPy-generated if no CSVs are present — offline / CI mode |
 | **Total** | | **111,499** | **42.0 % pre-SMOTE** | |
