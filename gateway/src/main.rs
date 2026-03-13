@@ -421,9 +421,9 @@ async fn main() -> std::io::Result<()> {
     });
 
     let port: u16 = std::env::var("PORT")
-        .unwrap_or_else(|_| "7860".to_string())
+        .unwrap_or_else(|_| "8082".to_string())
         .parse()
-        .unwrap_or(7860);
+        .unwrap_or(8082);
     let bind_addr = format!("0.0.0.0:{}", port);
 
     HttpServer::new(move || {

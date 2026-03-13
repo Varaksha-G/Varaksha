@@ -24,5 +24,5 @@ COPY start.sh .
 
 RUN chmod +x start.sh varaksha-gateway
 
-EXPOSE 7860
+EXPOSE 8082
 CMD ["./start.sh"]

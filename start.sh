@@ -14,7 +14,7 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-echo "[start.sh] Launching Rust gateway on port ${PORT:-7860}..."
+echo "[start.sh] Launching Rust gateway on port ${PORT:-8082}..."
 ./varaksha-gateway
 
 kill $SIDECAR_PID 2>/dev/null || true
