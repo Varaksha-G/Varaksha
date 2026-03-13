@@ -71,7 +71,7 @@ const ATTACKS: AttackDef[] = [
       { text: "[L1-ML  ] Ensemble composite: BLOCK — risk score 0.90  ■■■■■■■■■■ 90%",                  color: "error",   delay: 2420 },
       { text: "[L2-CACHE] Writing risk delta → DashMap[7f3a9c12]: { risk: 0.90, flag: MULE }",           color: "layer",   delay: 2750 },
       { text: "[GATEWAY] BLOCK issued — transaction halted before NPCI settlement window",                color: "error",   delay: 3080 },
-      { text: "[ALERT  ] Bhashini NMT (hi-IN): \"रात के 3 बजे ₹99,999 — संदिग्ध लेन-देन रोका गया।\"",  color: "hindi",   delay: 3500 },
+      { text: "[ALERT  ] Neural TTS (hi-IN): \"रात के 3 बजे ₹99,999 — संदिग्ध लेन-देन रोका गया।\"",  color: "hindi",   delay: 3500 },
     ],
   },
 
