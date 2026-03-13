@@ -12,6 +12,8 @@ import { LegalReport     } from "./LegalReport";
 
 const FEED_INTERVAL_MS  = 2200;   // New transaction injected to feed every N ms
 const FEED_MAX_ROWS     = 60;     // Max rows before old ones are pruned
+const API_BASE          = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+let streamSeq           = 1;
 
 // ── Synthetic data pools ──────────────────────────────────────────────────────
 
@@ -68,6 +70,16 @@ interface FeedRow {
   latencyMs:   number;
 }
 
+interface StreamTx {
+  time: string;
+  sender: string;
+  receiver: string;
+  amount: number;
+  category: string;
+  verdict: Verdict;
+  risk: number;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // DETERMINISTIC SYNTHETIC HELPERS  (no Math.random() in render — SSR-safe IDR)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -111,35 +123,21 @@ function nextFeedRow(): FeedRow {
   };
 }
 
-function deriveSandboxResult(f: SandboxForm): SandboxResult {
-  const amount    = parseFloat(f.amount) || 0;
-  const isBlock   = amount > 50000 && f.newDevice;
-  const isFlag    = !isBlock && (amount > 30000 || f.newDevice);
+function mapMerchantCategory(input: string): string {
+  const key = input.toLowerCase();
+  if (key === "grocery" || key === "food") return "FOOD";
+  if (key === "fuel" || key === "utilities") return "UTILITY";
+  if (key === "travel") return "TRAVEL";
+  if (key === "finance") return "GAMBLING";
+  return "ECOM";
+}
 
-  const verdict: Verdict = isBlock ? "BLOCK" : isFlag ? "FLAG" : "ALLOW";
-
-  let riskScore = 0.08;
-  if (f.newDevice) riskScore += 0.22;
-  if (amount > 10000) riskScore += 0.14;
-  if (amount > 50000) riskScore += 0.28;
-  if (f.timeOfDay === "02:00-05:00") riskScore += 0.18;
-  riskScore = Math.min(0.99, Math.round(riskScore * 100) / 100);
-
-  const reasons: string[] = [];
-  if (f.newDevice) reasons.push("First-seen device fingerprint");
-  if (amount > 50000) reasons.push("Amount exceeds high-value threshold (₹50,000)");
-  if (amount > 30000) reasons.push("Amount in elevated watchlist band (₹30K–₹50K)");
-  if (f.timeOfDay === "02:00-05:00") reasons.push("Off-hours transaction window (02:00–05:00)");
-  if (f.merchantCat === "Finance") reasons.push("High-risk merchant category: Finance");
-  if (isBlock) reasons.push("Consortium cache: VPA risk flag corroborated");
-  if (reasons.length === 0) reasons.push("No anomalous signals detected");
-
-  return {
-    verdict,
-    riskScore,
-    latencyMs: 6 + (amount % 5),
-    reasons,
-  };
+function mapTimeBucketToHour(bucket: string): number {
+  if (bucket === "06:00-09:00") return 8;
+  if (bucket === "09:00-18:00") return 14;
+  if (bucket === "18:00-22:00") return 20;
+  if (bucket === "22:00-02:00") return 23;
+  return 3;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -212,20 +210,67 @@ function IntelSandbox() {
   const [form,   setForm  ] = useState<SandboxForm>(FORM_DEFAULTS);
   const [stage,  setStage ] = useState<LoadStage>(0);
   const [result, setResult] = useState<SandboxResult | null>(null);
+  const [error,  setError ] = useState<string | null>(null);
 
   const isRunning = stage > 0 && stage <= 3;
 
   const handleTest = useCallback(() => {
     if (isRunning) return;
     setResult(null);
+    setError(null);
     setStage(1);
 
     // Stage 1 → 2 → 3 → result with fixed delays
     setTimeout(() => setStage(2), 900);
     setTimeout(() => setStage(3), 1850);
-    setTimeout(() => {
-      setResult(deriveSandboxResult(form));
-      setStage(0);
+    setTimeout(async () => {
+      try {
+        const payload = {
+          vpa: form.senderVpa,
+          amount: parseFloat(form.amount) || 0,
+          merchant_category: mapMerchantCategory(form.merchantCat),
+          transaction_type: "DEBIT",
+          device_type: "ANDROID",
+          hour_of_day: mapTimeBucketToHour(form.timeOfDay),
+          day_of_week: new Date().getDay(),
+          transactions_last_1h: 1,
+          transactions_last_24h: 3,
+          amount_zscore: Math.min(5, (parseFloat(form.amount) || 0) / 10000),
+          gps_delta_km: 0,
+          is_new_device: form.newDevice,
+          is_new_merchant: false,
+          balance_drain_ratio: Math.min(1, (parseFloat(form.amount) || 0) / 100000),
+          account_age_days: 365,
+          previous_failed_attempts: form.newDevice ? 1 : 0,
+          transfer_cashout_flag: 0,
+        };
+
+        const res = await fetch(`${API_BASE}/v1/tx`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          throw new Error(`API ${res.status}`);
+        }
+
+        const apiResult = await res.json();
+        setResult({
+          verdict: apiResult.verdict,
+          riskScore: Number(apiResult.risk_score ?? 0),
+          latencyMs: Number(apiResult.latency_ms ?? 0),
+          reasons: [
+            `VPA hash: ${String(apiResult.vpa_hash || "").slice(0, 16)}...`,
+            `Trace ID: ${apiResult.trace_id}`,
+            "Real ONNX inference via Railway API",
+          ],
+        });
+      } catch {
+        setError("Live API unavailable. Set NEXT_PUBLIC_API_URL and redeploy frontend.");
+      } finally {
+        setStage(0);
+      }
     }, 2900);
   }, [form, isRunning]);
 
@@ -574,6 +619,9 @@ function IntelSandbox() {
 
         {/* Result */}
         {ResultPanel}
+        {error && (
+          <p className="mt-3 font-barlow text-[0.68rem] text-block/70">{error}</p>
+        )}
       </div>
     </section>
   );
@@ -587,10 +635,11 @@ function TransactionFeed() {
   const [rows,    setRows   ] = useState<FeedRow[]>([]);
   const [paused,  setPaused ] = useState(false);
   const [stats,   setStats  ] = useState({ allow: 0, flag: 0, block: 0, total: 0 });
+  const [usingFallback, setUsingFallback] = useState(false);
   const pausedRef             = useRef(paused);
   pausedRef.current           = paused;
 
-  // Inject initial rows on mount (client-only, no SSR randomness)
+  // Seed while waiting for stream connection.
   useEffect(() => {
     const seed: FeedRow[] = [];
     for (let i = 0; i < 12; i++) seed.push(nextFeedRow());
@@ -599,6 +648,50 @@ function TransactionFeed() {
   }, []);
 
   useEffect(() => {
+    const es = new EventSource(`${API_BASE}/v1/stream`);
+
+    es.onmessage = (e) => {
+      if (pausedRef.current) return;
+      try {
+        const tx: StreamTx = JSON.parse(e.data);
+        const row: FeedRow = {
+          id: streamSeq++,
+          ts: tx.time,
+          sender: tx.sender,
+          receiver: tx.receiver,
+          amount: tx.amount,
+          merchantCat: tx.category,
+          verdict: tx.verdict,
+          riskScore: Number(tx.risk),
+          latencyMs: 4,
+        };
+
+        setRows((prev) => {
+          const next = [row, ...prev];
+          return next.length > FEED_MAX_ROWS ? next.slice(0, FEED_MAX_ROWS) : next;
+        });
+
+        setStats((s) => ({
+          allow: s.allow + (row.verdict === "ALLOW" ? 1 : 0),
+          flag:  s.flag  + (row.verdict === "FLAG"  ? 1 : 0),
+          block: s.block + (row.verdict === "BLOCK" ? 1 : 0),
+          total: s.total + 1,
+        }));
+      } catch {
+        // ignore malformed events
+      }
+    };
+
+    es.onerror = () => {
+      setUsingFallback(true);
+      es.close();
+    };
+
+    return () => es.close();
+  }, []);
+
+  useEffect(() => {
+    if (!usingFallback) return;
     const timer = setInterval(() => {
       if (pausedRef.current) return;
       const row = nextFeedRow();
@@ -614,7 +707,7 @@ function TransactionFeed() {
       }));
     }, FEED_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [usingFallback]);
 
   return (
     <section className="border border-cream/[0.08] overflow-hidden flex flex-col">

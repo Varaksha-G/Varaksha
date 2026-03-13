@@ -55,6 +55,7 @@ const CACHE_POOL: CacheEntry[] = [
 
 const AUTO_ADVANCE_MS = 5000;
 const CHAR_DELAY_MS   = 22;    // ms per typed character
+const API_BASE        = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type Phase = "idle" | "query" | "hashing" | "lookup" | "verdict";
 
@@ -91,6 +92,7 @@ function lineClass(c: LineColor): string {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function CacheVisualizer() {
+  const [pool,      setPool     ] = useState<CacheEntry[]>(CACHE_POOL);
   const [entryIdx,  setEntryIdx ] = useState(0);
   const [phase,     setPhase    ] = useState<Phase>("idle");
   const [typedHash, setTypedHash] = useState("");
@@ -111,7 +113,8 @@ export function CacheVisualizer() {
 
   const runLookup = useCallback((idx: number) => {
     clearAllTimers();
-    const e = CACHE_POOL[idx % CACHE_POOL.length];
+    if (pool.length === 0) return;
+    const e = pool[idx % pool.length];
     setRunning(true);
     setTypedHash("");
     setPhase("query");
@@ -179,7 +182,48 @@ export function CacheVisualizer() {
       }, CHAR_DELAY_MS);
     }, 380);
     stageTimersRef.current.push(t1);
-  }, [clearAllTimers]);
+  }, [clearAllTimers, pool]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCache = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/v1/cache`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data)) return;
+
+        const mapped: CacheEntry[] = data.slice(0, 6).map((e: any, i: number) => {
+          const hash = String(e.key || "");
+          const risk = Number(e.risk_score || 0);
+          const verdict: Verdict = risk >= 0.75 ? "BLOCK" : risk >= 0.4 ? "FLAG" : "ALLOW";
+          return {
+            vpa: `hash_${i + 1}`,
+            hash,
+            risk,
+            verdict,
+            hitType: "HIT" as const,
+            consortium: String(verdict === "BLOCK" ? "TAINTED" : verdict === "FLAG" ? "SUSPECT" : "CLEAN"),
+          };
+        }).filter((e: CacheEntry) => e.hash.length > 0);
+
+        if (mapped.length > 0) {
+          setPool(mapped);
+          setEntryIdx(0);
+        }
+      } catch {
+        // keep local fallback cache pool
+      }
+    };
+
+    loadCache();
+    const timer = setInterval(loadCache, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   // Run on mount
   useEffect(() => {
@@ -190,26 +234,28 @@ export function CacheVisualizer() {
 
   // Auto-advance after each run completes
   useEffect(() => {
+    if (pool.length === 0) return;
     if (running) return;
     if (phase === "idle") return;
     autoTimerRef.current = setTimeout(() => {
-      const nextIdx = (entryIdx + 1) % CACHE_POOL.length;
+      const nextIdx = (entryIdx + 1) % pool.length;
       setEntryIdx(nextIdx);
       runLookup(nextIdx);
     }, AUTO_ADVANCE_MS);
     return () => {
       if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
     };
-  }, [running, phase, entryIdx, runLookup]);
+  }, [running, phase, entryIdx, runLookup, pool.length]);
 
   const handleQueryNext = useCallback(() => {
     if (running) return;
-    const nextIdx = (entryIdx + 1) % CACHE_POOL.length;
+    if (pool.length === 0) return;
+    const nextIdx = (entryIdx + 1) % pool.length;
     setEntryIdx(nextIdx);
     runLookup(nextIdx);
-  }, [running, entryIdx, runLookup]);
+  }, [running, entryIdx, runLookup, pool.length]);
 
-  const entry = CACHE_POOL[entryIdx];
+  const entry = pool[entryIdx] || CACHE_POOL[0];
 
   return (
     <section className="border border-cream/[0.08] overflow-hidden flex flex-col">
@@ -228,7 +274,7 @@ export function CacheVisualizer() {
         </div>
         <div className="flex items-center gap-3">
           <span className="font-courier text-[0.52rem] text-cream/18">
-            {entryIdx + 1}&thinsp;/&thinsp;{CACHE_POOL.length}
+            {entryIdx + 1}&thinsp;/&thinsp;{pool.length}
           </span>
           <button
             onClick={handleQueryNext}
@@ -305,7 +351,7 @@ export function CacheVisualizer() {
 
       {/* ── Entry dots footer ── */}
       <div className="px-5 py-2.5 border-t border-cream/[0.05] flex items-center gap-1.5">
-        {CACHE_POOL.map((e, i) => (
+        {pool.map((e, i) => (
           <motion.div
             key={i}
             className={`w-1.5 h-1.5 rounded-full transition-colors duration-400 ${
