@@ -1,4 +1,4 @@
-app = "varaksha-api"
+app = "varaksha-backend"
 primary_region = "sin"
 
 [build]
