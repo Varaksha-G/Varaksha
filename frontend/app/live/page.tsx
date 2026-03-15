@@ -12,7 +12,7 @@ import { LegalReport     } from "./LegalReport";
 
 const FEED_INTERVAL_MS  = 2200;   // New transaction injected to feed every N ms
 const FEED_MAX_ROWS     = 60;     // Max rows before old ones are pruned
-const API_BASE          = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
+const API_BASE          = process.env.NEXT_PUBLIC_API_URL || "http://localhost:7860";
 let streamSeq           = 1;
 
 // ── Synthetic data pools ──────────────────────────────────────────────────────
