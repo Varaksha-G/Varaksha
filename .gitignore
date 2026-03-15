@@ -1,0 +1,73 @@
+# ── Rust ──────────────────────────────────────────────────────────────────────
+/target/
+gateway/target/
+gateway/rust-core/target/
+varaksha-core/target/
+risk-cache/target/
+
+# ── Runtime logs ──────────────────────────────────────────────────────────────
+gateway_stdout.log
+gateway_stderr.log
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# ── Datasets (never commit) ───────────────────────────────────────────────────
+data/datasets/paysim/
+data/datasets/banksim/
+data/datasets/archive/
+data/datasets/*.csv
+data/datasets/*.zip
+data/datasets/*.json
+data/datasets/jailbreakbench-main/
+datasets/paysim/
+datasets/banksim/
+datasets/*.csv
+datasets/*.zip
+
+# ── GATE-M runtime artefacts (logs, snapshots generated during benchmark) ──────
+security/gate-m/playground/.gate_logs/
+security/gate-m/playground/.gate_snapshots/
+
+# ── Trained models (large binary files) ──────────────────────────────────────
+# Exclude heavy binary formats; allow .onnx and .json (checked in for deployment)
+data/models/*.pkl
+data/models/*.faiss
+data/models/model_manifest.json
+/models/
+*.pkl
+*.faiss
+
+# ── Reports ───────────────────────────────────────────────────────────────────
+reports/
+*.pdf
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+*.key
+*.pem
+
+# ── Private / presentation files (not for public repo) ───────────────────────
+bitsgoa.docx
+"draft 1.docx"
+draft*.docx
+old.html
+TEAM_RUST_BRIEF.md
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+*.swp

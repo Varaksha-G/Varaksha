@@ -1,0 +1,25 @@
+# requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+# SERVER RUNTIME — installed on Render / Fly.io / any deployment target.
+# Training dependencies are in requirements-train.txt (local use only).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Inference (replaces sklearn + xgboost + pandas at runtime) ────────────────
+onnxruntime>=1.18.0           # ~30 MB — all model inference goes through this
+numpy>=1.26.0
+
+# ── Web server ────────────────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# ── Graph Agent (Layer 3) ─────────────────────────────────────────────────────
+networkx>=3.3
+requests>=2.32.0
+
+# ── Accessible Alert Agent (Layer 4) ─────────────────────────────────────────
+edge-tts>=6.1.10
+googletrans==4.0.0rc1         # optional; graceful-degrades if install fails
+
+# ── Dev ───────────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+

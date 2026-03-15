@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Self-hosted Fonts for Production ─────────────────────────────────────── */
+/* Downloaded from Google Fonts + stored in public/fonts/ for Indian deployment */
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-Regular.woff2") format("woff2"),
+       url("/fonts/PlayfairDisplay-Regular.woff")  format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-Bold.woff2") format("woff2"),
+       url("/fonts/PlayfairDisplay-Bold.woff")  format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-Black.woff2") format("woff2"),
+       url("/fonts/PlayfairDisplay-Black.woff")  format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-Italic.woff2") format("woff2"),
+       url("/fonts/PlayfairDisplay-Italic.woff")  format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Barlow";
+  src: url("/fonts/Barlow-Regular.woff2") format("woff2"),
+       url("/fonts/Barlow-Regular.woff")  format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Barlow";
+  src: url("/fonts/Barlow-Medium.woff2") format("woff2"),
+       url("/fonts/Barlow-Medium.woff")  format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Barlow";
+  src: url("/fonts/Barlow-SemiBold.woff2") format("woff2"),
+       url("/fonts/Barlow-SemiBold.woff")  format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Barlow";
+  src: url("/fonts/Barlow-Bold.woff2") format("woff2"),
+       url("/fonts/Barlow-Bold.woff")  format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Courier Prime";
+  src: url("/fonts/CourierPrime-Regular.woff2") format("woff2"),
+       url("/fonts/CourierPrime-Regular.woff")  format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Courier Prime";
+  src: url("/fonts/CourierPrime-Bold.woff2") format("woff2"),
+       url("/fonts/CourierPrime-Bold.woff")  format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Base Resets ──────────────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Cursor defaults for data-dense UI */
+  body {
+    cursor: default;
+  }
+
+  /* Selection highlight uses denim blue accent */
+  ::selection {
+    background-color: rgb(37 99 235 / 0.18);
+    color: #0F1E2E;
+  }
+}
+
+/* ── Page Texture & Depth ─────────────────────────────────────────────────── */
+body {
+  /* Layered background:
+     1. Fine dot grid — gives subtle paper/fabric texture
+     2. Top-left denim radial — directional light source
+     3. Bottom-right teal radial — soft complementary glow */
+  background-image:
+    radial-gradient(circle, rgba(15, 30, 46, 0.052) 1px, transparent 1px),
+    radial-gradient(ellipse 110% 55% at 18% -5%, rgba(37, 99, 235, 0.07) 0%, transparent 62%),
+    radial-gradient(ellipse  55% 45% at 92% 98%, rgba(13, 122, 95,  0.04) 0%, transparent 55%);
+  background-size: 22px 22px, 100% 100%, 100% 100%;
+  background-attachment: local, fixed, fixed;
+}
+
+/* Card surface gradient — applied to metric cards and step detail cards */
+.surface-card {
+  background-image: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(219, 231, 254, 0.32) 100%
+  );
+}
+.surface-card:hover {
+  background-image: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 1)    0%,
+    rgba(219, 231, 254, 0.52) 100%
+  );
+}

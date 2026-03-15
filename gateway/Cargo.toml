@@ -1,0 +1,25 @@
+[package]
+name = "varaksha-gateway"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+actix-web   = "4"
+actix-cors  = "0.7"
+async-stream = "0.3"
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+sha2        = "0.10"
+hmac        = "0.12"
+hex         = "0.4"
+tokio       = { version = "1", features = ["full"] }
+log         = "0.4"
+env_logger  = "0.11"
+uuid        = { version = "1", features = ["v4"] }
+reqwest     = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+rand        = "0.8"
+chrono      = { version = "0.4", default-features = false, features = ["clock"] }
+
+dashmap    = "5"
+
+risk-cache = { path = "../risk-cache" }
