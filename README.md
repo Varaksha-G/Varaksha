@@ -281,25 +281,6 @@ Varaksha is built against the full 2026 regulatory stack for UPI fraud detection
 
 ---
 
-### Implementation Status
-
-| Obligation | Reference | Status |
-|---|---|---|
-| Legitimate Use for Security (primary legal basis) | DPDP §7(g) | ✅ Documented as primary basis in `gateway/src/main.rs` — no consent required for fraud detection in a banking context |
-| Consent gate (secondary belt-and-braces) | DPDP §4(1), §6 | ✅ `ConsentManagerClient` (`gateway/src/consent.rs`) calls AA `POST /v2/Consent/fetch` (ReBIT v2.0). HTTP 422 on missing token, 403 on inactive consent. `consent_id` logged against `trace_id` |
-| Notice to Data Principal | DPDP §5, Rules 2025 Rule 3 | ⚠️ Footer placeholder on frontend — production needs a dedicated privacy notice page |
-| Purpose limitation — fraud scoring only | DPDP §6(3), §7(e) | ✅ No secondary use of any hash or score |
-| Data minimisation — no raw PII stored | DPDP §6(3) | ✅ Only `{vpa_hash, risk_score, reason}` persists; raw VPA is hashed at ingress |
-| TTL / retention enforcement | DPDP §6(3), §9(6) | ✅ Background eviction in `risk-cache/src/cleaner.rs` (60 s sweep); `get()` validates `expires_at` on every read |
-| Data Principal rights (access, erasure, grievance) | DPDP §§12–13 | ⚠️ Grievance contact in footer; no self-service rights portal yet |
-| Webhook channel integrity | DPDP / IT Act §43A | ✅ HMAC-SHA256 signature on every graph→gateway webhook |
-| Identity theft / SIM-swap / impersonation detection | IT Act §66C, §66D | ✅ ML features `is_new_device` + `previous_failed_attempts` target SIM-swap; graph mule detector catches fan-in (account takeover); L4 alert agent cites §66D |
-| Per-VPA daily request cap | NPCI OC-215/2025-26 | ✅ `check_tx` enforces 100 scoring requests per VPA per 24 h via `DashMap` rate limiter — HTTP 429 on breach |
-| Risk-based transaction monitoring | RBI Master Directions; RBI 2026 2FA | ✅ Varaksha IS the risk-based monitoring layer — composite ML score (RF 70 % + IsoForest 30 %) + graph mule detection flags high-risk patterns for enhanced verification |
-| Significant Data Fiduciary registration | DPDP §10 | N/A — demo scale; register if > 10 M principals |
-
----
-
 ### Personal Data Surface Audit
 
 | Surface | Personal data? | Handling |
