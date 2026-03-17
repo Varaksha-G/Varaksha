@@ -104,23 +104,19 @@ def debug_models():
 
 @app.get("/debug/score")
 def debug_score():
-    low_risk  = np.array([[1,1,0,40.0,14,2,1,3,0.1,0.0,0,0,0.01,365,0,0]], dtype=np.float32)
+    low_risk = np.array([[1,1,0,40.0,14,2,1,3,0.1,0.0,0,0,0.01,365,0,0]], dtype=np.float32)
     high_risk = np.array([[2,1,2,99999.0,3,1,8,15,3.2,0.0,1,0,0.95,2,3,1]], dtype=np.float32)
 
-    rf_low   = engine._rf_sess.run(None, {"X": low_risk})
-    rf_high  = engine._rf_sess.run(None, {"X": high_risk})
-    if_low   = engine._iso_sess.run(None, {"X": low_risk})  if engine._iso_sess else None
-    if_high  = engine._iso_sess.run(None, {"X": high_risk}) if engine._iso_sess else None
+    rf_low  = engine._rf_sess.run(None, {"X": low_risk})
+    rf_high = engine._rf_sess.run(None, {"X": high_risk})
 
     return {
-        "low_risk":  {
-            "rf_output":  str(rf_low),
-            "if_output":  str(if_low),
-            "rf_prob_parsed": float(rf_low[1][0][1]),
-        },
-        "high_risk": {
-            "rf_output":  str(rf_high),
-            "if_output":  str(if_high),
-            "rf_prob_parsed": float(rf_high[1][0][1]),
-        },
+        "rf_output_names": engine._rf_sess.get_outputs(),
+        "rf_low_len":      len(rf_low),
+        "rf_low_0_shape":  str(np.array(rf_low[0]).shape),
+        "rf_low_0_values": str(rf_low[0]),
+        "rf_low_1_shape":  str(np.array(rf_low[1]).shape) if len(rf_low) > 1 else "none",
+        "rf_low_1_values": str(rf_low[1]) if len(rf_low) > 1 else "none",
+        "rf_high_0_values": str(rf_high[0]),
+        "rf_high_1_values": str(rf_high[1]) if len(rf_high) > 1 else "none",
     }
