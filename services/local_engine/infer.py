@@ -132,9 +132,15 @@ class VarakshaScoringEngine:
         """
         X = self._extract(tx)
 
-        # RF probability — sole classifier
-        rf_out       = self._rf_sess.run(None, {"X": X})
-        fraud_proba  = float(rf_out[1][0][1])   # [1]=probabilities, [0]=first sample, [1]=fraud class
+        # RF probability — shape-aware parsing to handle both predict() and predict_proba() outputs
+        rf_out = self._rf_sess.run(None, {"X": X})
+        out1 = np.array(rf_out[1]) if len(rf_out) > 1 else np.array(rf_out[0])
+        if out1.ndim == 2 and out1.shape[1] == 2:
+            fraud_proba = float(out1[0][1])          # predict_proba standard: (1, 2) shape
+        elif out1.ndim == 1:
+            fraud_proba = float(out1[0])             # single probability value
+        else:
+            fraud_proba = float(np.mean(out1))       # raw votes: (58, 1) shape — average them
 
         # IsolationForest anomaly score
         if self._iso_sess is not None:
