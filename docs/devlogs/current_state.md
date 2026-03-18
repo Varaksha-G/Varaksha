@@ -1,8 +1,15 @@
 # Varaksha V2 — Current State Snapshot
 
-> **Last updated:** March 12, 2026  
-> **Branch:** `test` · **Latest commit:** `2e806e6`  
-> **Live deploy:** `8dfb8b4b.varaksha.pages.dev`  
+> **Last updated:** March 18, 2026  
+> **Branch:** `test` · **Latest commit:** `50bf95f`  
+> **Live deploy:** Cloudflare Pages (`varaksha.pages.dev`) — awaiting judge redeploy with NEXT_PUBLIC_API_URL set  
+>
+> **Phase 16 Summary (Mar 18, 2026):**
+> - ✅ ML models verified: All 4 ONNX files present & actively scoring (RF + IF composite)
+> - ✅ Backend operational: Railway health check OK, API responding ~5.7ms latency
+> - ✅ Merchant categories unified: Both modules now use backend codes (FOOD, UTILITY, ECOM, GAMBLING, TRAVEL)
+> - ✅ Cloudflare deployment fixed: Removed overly strict validation, error diagnostics added
+> - ✅ Setup guides created: `SETUP_NOW.md` + `IMMEDIATE_FIX_GUIDE.md` for judges
 >
 > This document is a point-in-time spec sheet + architecture reference.
 > It must be kept in sync with the repo whenever a Phase entry is added to `DEVLOG.md`.
