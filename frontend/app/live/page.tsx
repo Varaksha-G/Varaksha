@@ -81,17 +81,12 @@ interface StreamTx {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SYNTHETIC FALLBACK DATA (when stream unavailable)
+// DETERMINISTIC SYNTHETIC HELPERS  (no Math.random() in render — SSR-safe IDR)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 let _feedSeq = 0;
 
-/**
- * Generate synthetic transaction data WITH REAL ML INFERENCE
- * Calls /v1/tx backend endpoint to get actual model predictions
- * Falls back to deterministic scoring if API unavailable
- */
-async function nextFeedRow(api_base: string): Promise<FeedRow> {
+function nextFeedRow(): FeedRow {
   const idx     = _feedSeq % VPA_SENDERS.length;
   const amtIdx  = _feedSeq % FEED_AMOUNTS.length;
   const devIdx  = _feedSeq % FEED_DEVICES.length;
@@ -99,92 +94,32 @@ async function nextFeedRow(api_base: string): Promise<FeedRow> {
 
   const amount    = FEED_AMOUNTS[amtIdx];
   const newDevice = FEED_DEVICES[devIdx];
-  const sender    = VPA_SENDERS[idx];
-  const receiver  = VPA_RECEIVERS[idx % VPA_RECEIVERS.length];
-  const merchantCat = MERCHANT_CATS[idx % MERCHANT_CATS.length];
+
+  // Simplified verdict rule matching sandbox logic
+  let verdict:    Verdict = "ALLOW";
+  let riskScore          = 0.08 + (idx % 7) * 0.05;
+
+  if (amount > 50000 && newDevice) {
+    verdict   = "BLOCK";
+    riskScore = 0.91;
+  } else if (amount > 30000 || (newDevice && amount > 10000)) {
+    verdict   = "FLAG";
+    riskScore = 0.55 + (idx % 3) * 0.08;
+  }
 
   const now = new Date();
   const ts  = now.toTimeString().slice(0, 8);   // HH:MM:SS
 
-  // Try to get real ML prediction from backend
-  try {
-    const AMOUNT_MEAN = 3000;
-    const AMOUNT_STD = 12000;
-    const amount_zscore_value = (amount - AMOUNT_MEAN) / AMOUNT_STD;
-    const amount_zscore = Math.max(-5, Math.min(5, amount_zscore_value));
-    
-    const payload = {
-      vpa: sender,
-      amount: amount,
-      merchant_category: mapMerchantCategory(merchantCat),
-      transaction_type: "DEBIT",
-      device_type: newDevice ? "ANDROID" : "WEB",
-      hour_of_day: new Date().getHours(),
-      day_of_week: new Date().getDay(),
-      transactions_last_1h: 1,
-      transactions_last_24h: 3,
-      amount_zscore: amount_zscore,
-      gps_delta_km: 0,
-      is_new_device: newDevice ? 1 : 0,
-      is_new_merchant: false,
-      balance_drain_ratio: Math.min(1, amount / 100000),
-      account_age_days: 365,
-      previous_failed_attempts: newDevice ? 1 : 0,
-      transfer_cashout_flag: 0,
-    };
-
-    const res = await fetch(`${api_base}/v1/tx`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(3000), // 3s timeout
-    });
-
-    if (res.ok) {
-      const apiResult = await res.json();
-      return {
-        id: _feedSeq,
-        ts,
-        sender,
-        receiver,
-        amount,
-        merchantCat,
-        verdict: apiResult.verdict || "FLAG",
-        riskScore: Number(apiResult.risk_score ?? 0.5),
-        latencyMs: Number(apiResult.latency_ms ?? 0) || 15,
-      };
-    }
-  } catch (err) {
-    // Fall through to deterministic fallback
-    console.warn("Feed inference API failed, using fallback scoring:", err);
-  }
-
-  // Fallback: deterministic scoring based on transaction characteristics
-  // NOTE: This is NOT ML inference — only used when API is unavailable
-  let verdict: Verdict = "ALLOW";
-  let riskScore = 0.15 + (idx % 5) * 0.08;
-
-  if (amount > 50000 && newDevice) {
-    verdict = "BLOCK";
-    riskScore = 0.85;
-  } else if (amount > 30000 || (newDevice && amount > 10000)) {
-    verdict = "FLAG";
-    riskScore = 0.55;
-  } else if (amount > 10000) {
-    verdict = "FLAG";
-    riskScore = 0.42;
-  }
-
   return {
-    id: _feedSeq,
+    id:          _feedSeq,
     ts,
-    sender,
-    receiver,
+    sender:      VPA_SENDERS[idx],
+    receiver:    VPA_RECEIVERS[idx % VPA_RECEIVERS.length],
     amount,
-    merchantCat,
+    merchantCat: MERCHANT_CATS[idx % MERCHANT_CATS.length],
     verdict,
-    riskScore: Math.round(riskScore * 100) / 100,
-    latencyMs: 8 + (idx % 5),
+    riskScore:   Math.round(riskScore * 100) / 100,
+    latencyMs:   4 + (idx % 9),
   };
 }
 
@@ -716,33 +651,14 @@ function TransactionFeed() {
   const [stats,   setStats  ] = useState({ allow: 0, flag: 0, block: 0, total: 0 });
   const [usingFallback, setUsingFallback] = useState(false);
   const pausedRef             = useRef(paused);
-  const apiBaseRef            = useRef<string>("");
   pausedRef.current           = paused;
 
-  // Initialize API base and seed with real data
+  // Seed while waiting for stream connection.
   useEffect(() => {
-    const initFeed = async () => {
-      apiBaseRef.current = getApiBaseNormalized();
-      const seed: FeedRow[] = [];
-      
-      // Try to fetch seed data from ML model, with fallback
-      for (let i = 0; i < 6; i++) {
-        try {
-          const row = await nextFeedRow(apiBaseRef.current);
-          seed.push(row);
-        } catch (err) {
-          console.error("Failed to seed feed:", err);
-          break;
-        }
-      }
-      
-      if (seed.length > 0) {
-        setRows(seed.reverse());
-        setStats(accumulate(seed));
-      }
-    };
-    
-    initFeed();
+    const seed: FeedRow[] = [];
+    for (let i = 0; i < 12; i++) seed.push(nextFeedRow());
+    setRows(seed.reverse());
+    setStats(accumulate(seed));
   }, []);
 
   useEffect(() => {
@@ -813,34 +729,21 @@ function TransactionFeed() {
 
   useEffect(() => {
     if (!usingFallback) return;
-    
-    let isMounted = true;
-    const timer = setInterval(async () => {
-      if (pausedRef.current || !isMounted) return;
-      
-      try {
-        const row = await nextFeedRow(apiBaseRef.current);
-        if (!isMounted) return;
-        
-        setRows((prev) => {
-          const next = [row, ...prev];
-          return next.length > FEED_MAX_ROWS ? next.slice(0, FEED_MAX_ROWS) : next;
-        });
-        setStats((s) => ({
-          allow: s.allow + (row.verdict === "ALLOW" ? 1 : 0),
-          flag:  s.flag  + (row.verdict === "FLAG"  ? 1 : 0),
-          block: s.block + (row.verdict === "BLOCK" ? 1 : 0),
-          total: s.total + 1,
-        }));
-      } catch (err) {
-        console.warn("Fallback feed inference failed:", err);
-      }
+    const timer = setInterval(() => {
+      if (pausedRef.current) return;
+      const row = nextFeedRow();
+      setRows((prev) => {
+        const next = [row, ...prev];
+        return next.length > FEED_MAX_ROWS ? next.slice(0, FEED_MAX_ROWS) : next;
+      });
+      setStats((s) => ({
+        allow: s.allow + (row.verdict === "ALLOW" ? 1 : 0),
+        flag:  s.flag  + (row.verdict === "FLAG"  ? 1 : 0),
+        block: s.block + (row.verdict === "BLOCK" ? 1 : 0),
+        total: s.total + 1,
+      }));
     }, FEED_INTERVAL_MS);
-    
-    return () => {
-      isMounted = false;
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [usingFallback]);
 
   return (
