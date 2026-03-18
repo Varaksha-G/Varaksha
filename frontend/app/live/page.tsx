@@ -313,10 +313,20 @@ function IntelSandbox() {
           }
         } else if (errorMsg.includes('404')) {
           detailedError += `Issue: Endpoint not found (404) - Gateway may not be running\n`;
-          detailedError += `Check: Is gateway running on ${API_BASE}?`;\n        } else if (errorMsg.includes('50')) {
+          detailedError += `Check: Is gateway running on ${API_BASE}?`;
+        } else if (errorMsg.includes('50')) {
           detailedError += `Issue: Backend server error - Sidecar service may be unavailable\n`;
-          detailedError += `Error: ${errorMsg}`;\n        } else {\n          detailedError += `Issue: ${errorMsg}\n`;
-          detailedError += `URL: ${API_BASE}/v1/tx`;\n        }\n        \n        console.error('[Varaksha API Error]', { API_BASE, hostname, envUrl, error: errorMsg });\n        setError(detailedError);\n      } finally {\n        setStage(0);\n      }
+          detailedError += `Error: ${errorMsg}`;
+        } else {
+          detailedError += `Issue: ${errorMsg}\n`;
+          detailedError += `URL: ${API_BASE}/v1/tx`;
+        }
+        
+        console.error('[Varaksha API Error]', { API_BASE, hostname, envUrl, error: errorMsg });
+        setError(detailedError);
+      } finally {
+        setStage(0);
+      }
     }, 2900);
   }, [form, isRunning]);
 
