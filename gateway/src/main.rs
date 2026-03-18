@@ -147,10 +147,12 @@ fn score_to_verdict(score: f32) -> Verdict {
 /// This addresses cases where the model alone doesn't capture amount anomalies
 fn adjust_score_for_amount(raw_score: f32, amount: f32, category: &str) -> f32 {
     // Amount thresholds (in INR) vary by merchant category
+    // Note: Riskier categories (GAMBLING) have lower thresholds to require more scrutiny
     let (normal_high, suspicious_threshold, critical_threshold) = match category.to_uppercase().as_str() {
         "GROCERY" | "FOOD" | "FUEL" => (2000.0, 10000.0, 50000.0),      // Small transactions normally
         "ECOM" | "UTILITY" => (10000.0, 50000.0, 200000.0),            // Medium transactions
-        "TRAVEL" | "GAMBLING" => (15000.0, 100000.0, 500000.0),        // Higher baseline
+        "TRAVEL" => (15000.0, 100000.0, 500000.0),                      // Variable travel costs
+        "GAMBLING" => (5000.0, 25000.0, 100000.0),                      // RISKY: Lower thresholds
         "P2P" | "FINANCE" => (25000.0, 150000.0, 1000000.0),           // Variable transactions
         _ => (10000.0, 50000.0, 200000.0),                             // Default
     };
@@ -164,10 +166,11 @@ fn adjust_score_for_amount(raw_score: f32, amount: f32, category: &str) -> f32 {
         raw_score
     } else if amount <= critical_threshold {
         // Large but not impossible — slightly upweight
+        // ₹65,000 GAMBLING now falls here → gets +0.15 boost needed to trigger FLAG
         (raw_score + 0.15).min(0.85)
     } else {
         // Extreme amount — significant boost
-        // ₹12M+ should hit at least FLAG (0.40), likely BLOCK (0.75+)
+        // ₹100K+ GAMBLING should hit at least FLAG (0.50), likely BLOCK (0.80+)
         (raw_score + 0.35).min(1.0)
     };
 
