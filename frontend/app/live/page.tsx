@@ -124,10 +124,15 @@ function nextFeedRow(): FeedRow {
 
 function mapMerchantCategory(input: string): string {
   const key = input.toLowerCase();
-  if (key === "grocery" || key === "food") return "FOOD";
-  if (key === "fuel" || key === "utilities") return "UTILITY";
+  // Map UI categories to API category codes
+  if (key === "grocery") return "FOOD";
+  if (key === "fuel") return "UTILITY";
+  if (key === "food") return "FOOD";
+  if (key === "pharmacy") return "ECOM";
+  if (key === "utilities") return "UTILITY";
   if (key === "travel") return "TRAVEL";
   if (key === "finance") return "GAMBLING";
+  // Default fallback
   return "ECOM";
 }
 
@@ -267,10 +272,12 @@ function IntelSandbox() {
         }
 
         const apiResult = await res.json();
+        // Convert latency from microseconds to milliseconds
+        const latencyMs = Math.round((Number(apiResult.latency_us ?? 0)) / 1000);
         setResult({
           verdict: apiResult.verdict,
           riskScore: Number(apiResult.risk_score ?? 0),
-          latencyMs: Number(apiResult.latency_ms ?? 0),
+          latencyMs: latencyMs,
           reasons: [
             `VPA hash: ${String(apiResult.vpa_hash || "").slice(0, 16)}...`,
             `Trace ID: ${apiResult.trace_id}`,
@@ -280,7 +287,20 @@ function IntelSandbox() {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         const API_BASE = getApiBaseNormalized();
-        setError(`API Error: ${API_BASE}/v1/tx failed (${errorMsg}). Backend unavailable or network error.`);
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+        let detailedError = `API Error: ${API_BASE}/v1/tx`;
+        
+        if (err instanceof TypeError && errorMsg.includes('fetch')) {
+          detailedError += ` — Network/CORS error. Check that Railway backend (${API_BASE}) is accessible from ${hostname}.`;
+        } else if (errorMsg.includes('404')) {
+          detailedError += ` — Endpoint not found. Gateway may not be running.`;
+        } else if (errorMsg.includes('50')) {
+          detailedError += ` — Server error. Sidecar service may be unavailable.`;
+        } else {
+          detailedError += ` — ${errorMsg}`;
+        }
+        
+        setError(detailedError);
       } finally {
         setStage(0);
       }

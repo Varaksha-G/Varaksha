@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
 pub struct TxRequest {
     pub vpa: String,
     pub amount: f32,
@@ -24,6 +25,7 @@ pub struct TxRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct TxResponse {
     pub vpa_hash: String,
     pub verdict: Verdict,
@@ -49,6 +51,7 @@ pub struct CacheUpdateRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CacheUpdateResponse {
     pub ok: bool,
     pub vpa_hash: String,
@@ -56,6 +59,7 @@ pub struct CacheUpdateResponse {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "snake_case")]
 pub struct CacheEntryView {
     pub key: String,
     pub risk_score: f32,
