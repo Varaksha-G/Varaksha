@@ -297,22 +297,26 @@ function IntelSandbox() {
         const errorMsg = err instanceof Error ? err.message : String(err);
         const API_BASE = getApiBaseNormalized();
         const hostname = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
-        let detailedError = `API Error: ${API_BASE}/v1/tx`;
+        const envUrl = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : 'N/A';
+        
+        let detailedError = `API Error calling ${API_BASE}/v1/tx\n`;
+        detailedError += `Frontend: ${hostname}\n`;
         
         if (err instanceof TypeError && errorMsg.includes('fetch')) {
-          detailedError += ` — Network/CORS error. Check that Railway backend (${API_BASE}) is accessible from ${hostname}.`;
+          detailedError += `Issue: Network/CORS error - Backend may not be accessible\n`;
+          detailedError += `Debug: Tried to reach ${API_BASE}\n`;
+          if (!envUrl || envUrl === 'N/A') {
+            detailedError += `Fix: Set NEXT_PUBLIC_API_URL in Cloudflare env vars\n`;
+          }
+          if (hostname.endsWith('.pages.dev') && !envUrl) {
+            detailedError += `For .pages.dev domains, NEXT_PUBLIC_API_URL MUST be set in Cloudflare`;
+          }
         } else if (errorMsg.includes('404')) {
-          detailedError += ` — Endpoint not found. Gateway may not be running.`;
-        } else if (errorMsg.includes('50')) {
-          detailedError += ` — Server error. Sidecar service may be unavailable.`;
-        } else {
-          detailedError += ` — ${errorMsg}`;
-        }
-        
-        setError(detailedError);
-      } finally {
-        setStage(0);
-      }
+          detailedError += `Issue: Endpoint not found (404) - Gateway may not be running\n`;
+          detailedError += `Check: Is gateway running on ${API_BASE}?`;\n        } else if (errorMsg.includes('50')) {
+          detailedError += `Issue: Backend server error - Sidecar service may be unavailable\n`;
+          detailedError += `Error: ${errorMsg}`;\n        } else {\n          detailedError += `Issue: ${errorMsg}\n`;
+          detailedError += `URL: ${API_BASE}/v1/tx`;\n        }\n        \n        console.error('[Varaksha API Error]', { API_BASE, hostname, envUrl, error: errorMsg });\n        setError(detailedError);\n      } finally {\n        setStage(0);\n      }
     }, 2900);
   }, [form, isRunning]);
 
