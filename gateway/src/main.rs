@@ -496,23 +496,9 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or(8082);
     let bind_addr = format!("0.0.0.0:{}", port);
 
-    // Configure CORS for Cloudflare Pages frontend
-    let cors = if cfg!(debug_assertions) {
-        // Development: allow any origin for testing
-        Cors::permissive()
-    } else {
-        // Production: allow Cloudflare Pages domain specifically
-        Cors::default()
-            .allowed_origin("https://varaksha.pages.dev")
-            .allowed_origin("https://varaksha-production.up.railway.app")
-            .allow_any_method()
-            .allow_any_header()
-            .supports_credentials()
-    };
-
     HttpServer::new(move || {
         App::new()
-            .wrap(cors.clone())
+            .wrap(Cors::permissive())
             .app_data(web::Data::new(Arc::clone(&state)))
             .service(health)
             .service(check_tx)
