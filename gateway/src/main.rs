@@ -130,9 +130,13 @@ fn hash_vpa(vpa: &str) -> String {
 }
 
 fn score_to_verdict(score: f32) -> Verdict {
-    if score >= 0.75 {
+    // Balanced fraud classification thresholds
+    // ALLOW (0.0-0.50): Legitimate transactions with low fraud indicators
+    // FLAG  (0.50-0.80): Moderate risk requiring monitoring/review
+    // BLOCK (0.80-1.0): High confidence fraud signals
+    if score >= 0.80 {
         Verdict::Block
-    } else if score >= 0.40 {
+    } else if score >= 0.50 {
         Verdict::Flag
     } else {
         Verdict::Allow
@@ -492,9 +496,23 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or(8082);
     let bind_addr = format!("0.0.0.0:{}", port);
 
+    // Configure CORS for Cloudflare Pages frontend
+    let cors = if cfg!(debug_assertions) {
+        // Development: allow any origin for testing
+        Cors::permissive()
+    } else {
+        // Production: allow Cloudflare Pages domain specifically
+        Cors::default()
+            .allowed_origin("https://varaksha.pages.dev")
+            .allowed_origin("https://varaksha-production.up.railway.app")
+            .allow_any_method()
+            .allow_any_header()
+            .supports_credentials()
+    };
+
     HttpServer::new(move || {
         App::new()
-            .wrap(Cors::permissive())
+            .wrap(cors.clone())
             .app_data(web::Data::new(Arc::clone(&state)))
             .service(health)
             .service(check_tx)

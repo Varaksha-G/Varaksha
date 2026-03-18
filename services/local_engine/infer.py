@@ -194,9 +194,13 @@ class VarakshaScoringEngine:
 
         reason_str = "; ".join(reasons) if reasons else "normal pattern"
 
-        if proba >= 0.75:
+        # Balanced fraud classification thresholds (improved fairness)
+        # ALLOW (0.0-0.50): Legitimate transactions with low fraud indicators
+        # FLAG  (0.50-0.80): Moderate risk requiring monitoring/review
+        # BLOCK (0.80-1.0): High confidence fraud signals
+        if proba >= 0.80:
             return "BLOCK", reason_str
-        elif proba >= 0.40:
+        elif proba >= 0.50:
             return "FLAG", reason_str
         else:
             return "ALLOW", reason_str

@@ -94,16 +94,21 @@ function nextFeedRow(): FeedRow {
   const amount    = FEED_AMOUNTS[amtIdx];
   const newDevice = FEED_DEVICES[devIdx];
 
-  // Simplified verdict rule matching sandbox logic
+  // Deterministic verdict generation (balanced thresholds)
+  // ALLOW (0.0-0.50): Normal transactions ~ 0.08-0.38
+  // FLAG  (0.50-0.80): Suspicious transactions ~ 0.55-0.71
+  // BLOCK (0.80-1.00): High confidence fraud ~ 0.91
   let verdict:    Verdict = "ALLOW";
-  let riskScore          = 0.08 + (idx % 7) * 0.05;
+  let riskScore          = 0.08 + (idx % 7) * 0.05;  // 0.08, 0.13, 0.18, ..., 0.38
 
   if (amount > 50000 && newDevice) {
+    // Extreme amount + new device = BLOCK
     verdict   = "BLOCK";
     riskScore = 0.91;
   } else if (amount > 30000 || (newDevice && amount > 10000)) {
+    // Large amount or high-risk device combo = FLAG
     verdict   = "FLAG";
-    riskScore = 0.55 + (idx % 3) * 0.08;
+    riskScore = 0.55 + (idx % 3) * 0.08;  // 0.55, 0.63, 0.71
   }
 
   const now = new Date();
@@ -161,8 +166,12 @@ function verdictDot(v: Verdict) {
 }
 
 function riskBar(score: number) {
-  if (score >= 0.75) return "bg-block";
-  if (score >= 0.40) return "bg-flag";
+  // Balanced fraud classification thresholds
+  // ALLOW (0.0-0.50): Legitimate transactions
+  // FLAG  (0.50-0.80): Moderate risk
+  // BLOCK (0.80-1.0): High confidence fraud
+  if (score >= 0.80) return "bg-block";
+  if (score >= 0.50) return "bg-flag";
   return                    "bg-allow";
 }
 
