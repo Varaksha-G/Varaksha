@@ -56,10 +56,10 @@ const metrics = [
   },
   {
     kicker: "Model Performance",
-    value: "85.24%",
-    label: "Random Forest Accuracy",
-    sub: "111K rows · 7 real datasets · ROC-AUC 0.9546",
-    source: "Varaksha · trained Mar 2026",
+    value: "96.52%",
+    label: "Fraud Detection Accuracy (V2)",
+    sub: "111K rows · RF + LightGBM fusion · ROC-AUC 0.9952",
+    source: "Varaksha V2 · validated Mar 2026",
     accent: "bg-allow",           // green top-bar
     valueColor: "text-allow",
     colSpan: "col-span-12 md:col-span-4",

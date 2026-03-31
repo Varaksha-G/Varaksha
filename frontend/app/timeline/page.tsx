@@ -141,10 +141,10 @@ const MILESTONES: Milestone[] = [
   },
   {
     date:  "Mar 11 PM",
-    title: "85.24%",
-    quote: "Retraining on the complete leakage-corrected dataset: 85.24% accuracy, ROC-AUC 0.9546.",
+    title: "85.24% (V1)",
+    quote: "V1 retraining on the leakage-corrected dataset reached 85.24% accuracy (later superseded by V2).",
     body:  "The expanded 111,499-row dataset rebalanced by SMOTE to 51,735/51,735 yielded: RF Accuracy 85.24%, ROC-AUC 0.9546, Precision 0.7709, Recall 0.9229, F1 0.8401. Stale artefacts — lightgbm, xgboost, voting ensemble — were removed from the repository.",
-    tags:  ["111K rows", "85.24% accuracy", "ROC-AUC 0.9546", "Artefact cleanup"],
+    tags:  ["111K rows", "V1 baseline", "ROC-AUC 0.9546", "Artefact cleanup"],
     owner: "ml",
     Icon:  Zap,
   },
