@@ -84,6 +84,120 @@ interface StreamTx {
   risk: number;
 }
 
+interface TierScenarioStep {
+  id: string;
+  actor: string;
+  title: string;
+  detail: string;
+  signal: string;
+  latency: string;
+}
+
+const TIER_SCENARIOS: Record<Tier, TierScenarioStep[]> = {
+  cloud: [
+    {
+      id: "c1",
+      actor: "Client App",
+      title: "Transaction Submitted",
+      detail: "User initiates UPI payment from app. Payload reaches cloud ingress via bridge endpoint.",
+      signal: "POST /v1/tx",
+      latency: "~5 ms",
+    },
+    {
+      id: "c2",
+      actor: "Rust Gateway",
+      title: "PII Hash + Cache Lookup",
+      detail: "Rust hashes identifiers (SHA-256), checks DashMap risk cache, and applies rate limiting.",
+      signal: "hash + DashMap + limiter",
+      latency: "~2 ms",
+    },
+    {
+      id: "c3",
+      actor: "ML + Graph",
+      title: "ONNX Scoring Fusion",
+      detail: "LightGBM + anomaly score + topology delta are fused into a final fraud score.",
+      signal: "fused_score",
+      latency: "~2 ms",
+    },
+    {
+      id: "c4",
+      actor: "Verdict API",
+      title: "ALLOW / FLAG / BLOCK",
+      detail: "Gateway returns verdict and pushes incident context to live dashboards and alert modules.",
+      signal: "JSON response + SSE",
+      latency: "<10 ms total",
+    },
+  ],
+  enterprise: [
+    {
+      id: "e1",
+      actor: "Bank Core",
+      title: "Batch + Stream Ingest",
+      detail: "Bank connectors and transaction buses feed enterprise scoring APIs continuously.",
+      signal: "REST + webhook ingest",
+      latency: "near real-time",
+    },
+    {
+      id: "e2",
+      actor: "Rust Policy Layer",
+      title: "Policy + Auth Enforcement",
+      detail: "Rust enforces API keys, HMAC signatures, and per-tenant traffic controls.",
+      signal: "mTLS/HMAC checks",
+      latency: "~2 ms",
+    },
+    {
+      id: "e3",
+      actor: "Graph Engine",
+      title: "Topology Detection",
+      detail: "Sender/receiver graph updates live, surfacing fan-out, fan-in, and suspicious hubs.",
+      signal: "edge updates",
+      latency: "streaming",
+    },
+    {
+      id: "e4",
+      actor: "SOC + Audit",
+      title: "Actionable Incident Output",
+      detail: "SOC sees flagged flows, blocked entities, and compliance-grade audit traces.",
+      signal: "alerts + audit trail",
+      latency: "operator live",
+    },
+  ],
+  embedded: [
+    {
+      id: "m1",
+      actor: "Mobile SDK",
+      title: "On-Device Feature Build",
+      detail: "App derives feature vector locally before the payment leaves the device.",
+      signal: "local feature vector",
+      latency: "sub-ms",
+    },
+    {
+      id: "m2",
+      actor: "ONNX Runtime Mobile",
+      title: "Local Fraud Scoring",
+      detail: "Quantized model runs directly on handset for pre-network risk estimation.",
+      signal: "local risk score",
+      latency: "<1 ms",
+    },
+    {
+      id: "m3",
+      actor: "Device Policy",
+      title: "Instant User Intercept",
+      detail: "High-risk transactions are challenged or blocked before server round-trip.",
+      signal: "inline guardrail",
+      latency: "instant",
+    },
+    {
+      id: "m4",
+      actor: "Cloud Sync",
+      title: "Deferred Telemetry Sync",
+      detail: "Device later syncs anonymized telemetry for global model and graph updates.",
+      signal: "async sync",
+      latency: "background",
+    },
+  ],
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // DETERMINISTIC SYNTHETIC HELPERS  (no Math.random() in render — SSR-safe IDR)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -189,6 +303,77 @@ function maskVpa(vpa: string): string {
     return `${handle.slice(0, 2)}****${handle.slice(-2)}@${bank}`;
   }
   return vpa;
+}
+
+function TierScenarioArchitecture({ tier }: { tier: Tier }) {
+  const steps = TIER_SCENARIOS[tier];
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    setActive(0);
+  }, [tier]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActive((s) => (s + 1) % steps.length);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, [steps.length]);
+
+  const current = steps[active];
+  const tierTitle = tier === "cloud" ? "Cloud Execution Path" : tier === "enterprise" ? "Enterprise Execution Path" : "Embedded Execution Path";
+
+  return (
+    <section className="border border-cream/[0.08] overflow-hidden">
+      <div className="px-5 py-3 border-b border-cream/[0.07] bg-cream/[0.025] flex items-center justify-between">
+        <span className="font-barlow text-[0.57rem] tracking-[0.30em] uppercase text-cream/40">
+          Typical Scenario Architecture
+        </span>
+        <span className="font-courier text-[0.52rem] text-cream/20">{tierTitle}</span>
+      </div>
+
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          {steps.map((s, i) => {
+            const isActive = i === active;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActive(i)}
+                className={`text-left border px-3 py-2 transition-colors ${
+                  isActive
+                    ? "border-saffron/45 bg-saffron/10"
+                    : "border-cream/[0.08] bg-cream/[0.015] hover:bg-cream/[0.04]"
+                }`}
+              >
+                <p className="font-barlow text-[0.46rem] tracking-[0.24em] uppercase text-cream/28 mb-1">{s.actor}</p>
+                <p className={`font-courier text-[0.62rem] ${isActive ? "text-saffron" : "text-cream/55"}`}>{s.title}</p>
+                <div className="mt-2 h-[2px] bg-cream/[0.08]">
+                  <div className={`h-full ${isActive ? "bg-saffron" : "bg-cream/[0.16]"}`} style={{ width: `${((i + 1) / steps.length) * 100}%` }} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_140px] gap-3 border border-cream/[0.08] bg-cream/[0.015] p-4">
+          <div>
+            <p className="font-barlow text-[0.50rem] tracking-[0.24em] uppercase text-cream/25 mb-1">Current Step</p>
+            <p className="font-playfair text-[1rem] text-cream mb-1">{current.title}</p>
+            <p className="font-barlow text-[0.72rem] text-cream/48 leading-relaxed">{current.detail}</p>
+          </div>
+          <div>
+            <p className="font-barlow text-[0.50rem] tracking-[0.24em] uppercase text-cream/25 mb-1">Signal</p>
+            <p className="font-courier text-[0.66rem] text-cream/62">{current.signal}</p>
+          </div>
+          <div>
+            <p className="font-barlow text-[0.50rem] tracking-[0.24em] uppercase text-cream/25 mb-1">Latency</p>
+            <p className="font-courier text-[0.70rem] text-allow">{current.latency}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1167,6 +1352,7 @@ interface GraphEdge {
   from:    string;
   to:      string;
   verdict: Verdict;
+  riskScore: number;
   amount:  number;
   ts:      number;
 }
@@ -1175,13 +1361,102 @@ function GraphNetworkMonitor() {
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [totalProcessed, setTotalProcessed] = useState(0);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [manual, setManual] = useState({
+    sender: "ravi.kumar@axisbank",
+    receiver: "kirana.store@okhdfc",
+    amount: "4750",
+    merchantCat: "FOOD",
+    timeOfDay: "09:00-18:00",
+    newDevice: false,
+  });
+
+  const appendEdge = useCallback((edge: GraphEdge) => {
+    setEdges((prev) => {
+      const next = [edge, ...prev];
+      return next.length > 40 ? next.slice(0, 40) : next;
+    });
+    setTotalProcessed((p) => p + 1);
+  }, []);
+
+  function fallbackVerdict(amount: number, newDevice: boolean, merchant: string): { verdict: Verdict; risk: number } {
+    if (amount > 45000 && newDevice) return { verdict: "BLOCK", risk: 0.92 };
+    if (amount > 18000 || newDevice || merchant === "GAMBLING") return { verdict: "FLAG", risk: 0.66 };
+    return { verdict: "ALLOW", risk: 0.18 };
+  }
+
+  const handleInject = useCallback(async (e: any) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    setSubmitting(true);
+    setManualError(null);
+    const amount = Math.max(1, Number(manual.amount) || 0);
+
+    try {
+      const API_BASE = getApiBaseNormalized();
+      const payload = {
+        vpa: manual.sender,
+        amount,
+        merchant_category: manual.merchantCat,
+        transaction_type: "DEBIT",
+        device_type: "ANDROID",
+        hour_of_day: mapTimeBucketToHour(manual.timeOfDay),
+        day_of_week: new Date().getDay(),
+        transactions_last_1h: manual.newDevice ? 3 : 1,
+        transactions_last_24h: manual.newDevice ? 8 : 3,
+        amount_zscore: Math.max(-5, Math.min(5, (amount - 3000) / 12000)),
+        gps_delta_km: manual.newDevice ? 18.4 : 1.2,
+        is_new_device: manual.newDevice,
+        is_new_merchant: false,
+        balance_drain_ratio: manual.newDevice && amount > 10000 ? 0.73 : 0.14,
+        account_age_days: 420,
+        previous_failed_attempts: manual.newDevice ? 2 : 0,
+        transfer_cashout_flag: manual.merchantCat === "GAMBLING" ? 1 : 0,
+      };
+
+      const res = await fetch(`${API_BASE}/v1/tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      appendEdge({
+        id: Date.now(),
+        from: manual.sender,
+        to: manual.receiver,
+        verdict: (data.verdict as Verdict) || "ALLOW",
+        riskScore: Number(data.risk_score ?? 0.18),
+        amount,
+        ts: Date.now(),
+      });
+    } catch {
+      const fb = fallbackVerdict(amount, manual.newDevice, manual.merchantCat);
+      appendEdge({
+        id: Date.now(),
+        from: manual.sender,
+        to: manual.receiver,
+        verdict: fb.verdict,
+        riskScore: fb.risk,
+        amount,
+        ts: Date.now(),
+      });
+      setManualError("Backend unreachable - injected with enterprise fallback scoring.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [appendEdge, manual, submitting]);
 
   // Seed initial edges
   useEffect(() => {
     const seed: GraphEdge[] = [];
     for (let i = 0; i < 12; i++) {
       const row = nextFeedRow();
-      seed.push({ id: i, from: row.sender, to: row.receiver, verdict: row.verdict, amount: row.amount, ts: Date.now() - (12 - i) * 2200 });
+      seed.push({ id: i, from: row.sender, to: row.receiver, verdict: row.verdict, riskScore: row.riskScore, amount: row.amount, ts: Date.now() - (12 - i) * FEED_INTERVAL_MS });
     }
     setEdges(seed);
     setTotalProcessed(seed.length);
@@ -1196,31 +1471,40 @@ function GraphNetworkMonitor() {
       es.onmessage = (e) => {
         try {
           const tx: StreamTx = JSON.parse(e.data);
-          const edge: GraphEdge = { id: Date.now(), from: tx.sender, to: tx.receiver, verdict: tx.verdict, amount: tx.amount, ts: Date.now() };
-          setEdges((prev) => { const next = [edge, ...prev]; return next.length > 30 ? next.slice(0, 30) : next; });
-          setTotalProcessed((p) => p + 1);
+          appendEdge({
+            id: Date.now(),
+            from: tx.sender,
+            to: tx.receiver,
+            verdict: tx.verdict,
+            riskScore: tx.risk,
+            amount: tx.amount,
+            ts: Date.now(),
+          });
         } catch { /* ignore */ }
       };
       es.onerror = () => { setUsingFallback(true); es?.close(); es = null; };
     }
     connect();
     return () => es?.close();
-  }, []);
+  }, [appendEdge]);
 
   // Deterministic fallback when backend offline
   useEffect(() => {
     if (!usingFallback) return;
     const timer = setInterval(() => {
       const row = nextFeedRow();
-      setEdges((prev) => {
-        const edge: GraphEdge = { id: Date.now(), from: row.sender, to: row.receiver, verdict: row.verdict, amount: row.amount, ts: Date.now() };
-        const next = [edge, ...prev];
-        return next.length > 30 ? next.slice(0, 30) : next;
+      appendEdge({
+        id: Date.now(),
+        from: row.sender,
+        to: row.receiver,
+        verdict: row.verdict,
+        riskScore: row.riskScore,
+        amount: row.amount,
+        ts: Date.now(),
       });
-      setTotalProcessed((p) => p + 1);
     }, FEED_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [usingFallback]);
+  }, [usingFallback, appendEdge]);
 
   // Extract unique sender/receiver nodes (up to 8 each)
   const senders = useMemo(() => {
@@ -1287,6 +1571,26 @@ function GraphNetworkMonitor() {
           </div>
         ))}
       </div>
+
+      <form onSubmit={handleInject} className="grid grid-cols-1 md:grid-cols-6 gap-2 px-4 py-3 border-b border-cream/[0.06] bg-cream/[0.015]">
+        <input value={manual.sender} onChange={(e) => setManual((m) => ({ ...m, sender: e.target.value }))} className="bg-cream/[0.02] border border-cream/[0.12] px-2 py-2 font-courier text-[0.62rem] text-cream/70" placeholder="sender VPA" />
+        <input value={manual.receiver} onChange={(e) => setManual((m) => ({ ...m, receiver: e.target.value }))} className="bg-cream/[0.02] border border-cream/[0.12] px-2 py-2 font-courier text-[0.62rem] text-cream/70" placeholder="receiver VPA" />
+        <input value={manual.amount} onChange={(e) => setManual((m) => ({ ...m, amount: e.target.value }))} className="bg-cream/[0.02] border border-cream/[0.12] px-2 py-2 font-courier text-[0.62rem] text-cream/70" placeholder="amount" type="number" />
+        <select value={manual.merchantCat} onChange={(e) => setManual((m) => ({ ...m, merchantCat: e.target.value }))} className="bg-cream/[0.02] border border-cream/[0.12] px-2 py-2 font-courier text-[0.62rem] text-cream/70">
+          {MERCHANT_CATS.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+        </select>
+        <select value={manual.timeOfDay} onChange={(e) => setManual((m) => ({ ...m, timeOfDay: e.target.value }))} className="bg-cream/[0.02] border border-cream/[0.12] px-2 py-2 font-courier text-[0.62rem] text-cream/70">
+          {["06:00-09:00", "09:00-18:00", "18:00-22:00", "22:00-02:00", "02:00-06:00"].map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+        </select>
+        <button type="submit" disabled={submitting} className="bg-saffron/90 hover:bg-saffron disabled:opacity-60 text-ink font-barlow text-[0.60rem] tracking-[0.18em] uppercase px-3 py-2">
+          {submitting ? "Injecting..." : "Inject Tx"}
+        </button>
+        <label className="md:col-span-6 flex items-center gap-2 font-barlow text-[0.56rem] tracking-wide text-cream/40">
+          <input type="checkbox" checked={manual.newDevice} onChange={(e) => setManual((m) => ({ ...m, newDevice: e.target.checked }))} />
+          New device risk boost
+        </label>
+        {manualError && <p className="md:col-span-6 font-courier text-[0.56rem] text-flag/80">{manualError}</p>}
+      </form>
 
       {/* SVG Bipartite Graph */}
       <div className="p-5">
@@ -1708,6 +2012,9 @@ function EmbeddedTierPanel() {
       {/* Simulation component */}
       <Tier3EdgeSim />
 
+      {/* Interactive architecture walkthrough */}
+      <TierScenarioArchitecture tier="embedded" />
+
       {/* Tech specs */}
       <div className="border border-cream/[0.08] overflow-hidden">
         <div className="px-5 py-3 border-b border-cream/[0.06] bg-cream/[0.025]">
@@ -1893,6 +2200,8 @@ export default function LivePage() {
               <TransactionFeed />
             </div>
 
+            <TierScenarioArchitecture tier="cloud" />
+
             {/* C | D */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
               <DashMapVisualizer />
@@ -1931,6 +2240,8 @@ export default function LivePage() {
 
             {/* Open Banking Feed full-width */}
             <OpenBankingModule />
+
+            <TierScenarioArchitecture tier="enterprise" />
 
             {/* Security Arena + ML Stack side by side */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
