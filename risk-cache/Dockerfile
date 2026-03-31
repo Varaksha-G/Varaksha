@@ -6,7 +6,7 @@
 # ════════════════════════════════════════════════════════════════════════════════
 
 # ── Stage 1: Builder ──────────────────────────────────────────────────────────
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:slim-bookworm AS builder
 
 WORKDIR /build
 
