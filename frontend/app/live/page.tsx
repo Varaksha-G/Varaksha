@@ -1947,8 +1947,25 @@ function GraphNetworkMonitor() {
                 max="200"
                 value={batchSize}
                 onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))}
+                inputMode="numeric"
                 className="w-full bg-cream/[0.02] border border-cream/[0.12] px-2 py-2 font-courier text-[0.62rem] text-cream/70"
               />
+              <div className="mt-2 grid grid-cols-5 gap-2">
+                {[10, 25, 50, 75, 100].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setBatchSize(size)}
+                    className={`border px-2 py-1 font-courier text-[0.56rem] ${
+                      batchSize === size
+                        ? "border-saffron/50 text-saffron"
+                        : "border-cream/[0.12] text-cream/45 hover:text-cream/70"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={handleDatasetInject}
