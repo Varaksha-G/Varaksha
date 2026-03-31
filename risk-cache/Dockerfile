@@ -39,7 +39,8 @@ RUN curl -fsSL \
     "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
     -o /tmp/ort.tgz \
     && tar -xzf /tmp/ort.tgz -C /tmp \
-    && cp /tmp/onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so.${ORT_VERSION} /usr/local/lib/libonnxruntime.so \
+    && cp /tmp/onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime*.so* /usr/local/lib/ \
+    && ln -sf /usr/local/lib/libonnxruntime.so.${ORT_VERSION} /usr/local/lib/libonnxruntime.so \
     && ldconfig \
     && rm -rf /tmp/ort.tgz "/tmp/onnxruntime-linux-x64-${ORT_VERSION}"
 
@@ -60,6 +61,7 @@ ENV VARAKSHA_BIND_ADDR=0.0.0.0:8080
 ENV VARAKSHA_TIER=cloud
 ENV VARAKSHA_AUDIT_LOG_PATH=/app/logs/security_audit.jsonl
 ENV ORT_DYLIB_PATH=/usr/local/lib/libonnxruntime.so
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 # Secrets — MUST be set via Railway env vars in production:
 # VARAKSHA_API_KEY, VARAKSHA_UPDATE_SECRET, VARAKSHA_GRAPH_SECRET
 
