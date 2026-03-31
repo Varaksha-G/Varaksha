@@ -30,13 +30,13 @@ function eventMessage(kind: EventKind, key: string, seq: number) {
   return `> INTERCEPT key=${key} risk=${risk} verdict=BLOCK amount=Rs.${amount} cat=${category} reason=velocity_spike_plus_new_device`;
 }
 
-export function useMockCacheStream(tps = 1200, cells = 72 * 26) {
+export function useMockCacheStream(tps = 320, cells = 72 * 26) {
   const queueRef = useRef<StreamEvent[]>([]);
   const statsRef = useRef({ hit: 0, miss: 0, evict: 0, total: 0 });
   const seqRef = useRef(1);
 
   useEffect(() => {
-    const eventsPerTick = Math.max(1, Math.floor(tps / 40));
+    const eventsPerTick = Math.max(1, Math.floor(tps / 16));
     const timer = setInterval(() => {
       const batch: StreamEvent[] = [];
       for (let i = 0; i < eventsPerTick; i += 1) {
@@ -52,7 +52,7 @@ export function useMockCacheStream(tps = 1200, cells = 72 * 26) {
       if (queueRef.current.length > 2400) {
         queueRef.current.splice(0, queueRef.current.length - 2400);
       }
-    }, 24);
+    }, 60);
 
     return () => clearInterval(timer);
   }, [cells, tps]);
@@ -64,7 +64,7 @@ export function DashMapVisualizer() {
   const cols = 72;
   const rows = 26;
   const totalCells = cols * rows;
-  const { queueRef, statsRef } = useMockCacheStream(1200, totalCells);
+  const { queueRef, statsRef } = useMockCacheStream(320, totalCells);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<Uint8Array>(new Uint8Array(totalCells));
@@ -106,7 +106,7 @@ export function DashMapVisualizer() {
     let raf = 0;
 
     const draw = () => {
-      const batch = queueRef.current.splice(0, Math.min(queueRef.current.length, 140));
+      const batch = queueRef.current.splice(0, Math.min(queueRef.current.length, 40));
 
       for (const ev of batch) {
         stateRef.current[ev.idx] = 8;
@@ -163,7 +163,7 @@ export function DashMapVisualizer() {
     const timer = setInterval(() => {
       setStats({ ...statsRef.current });
       setTicker(logsRef.current.slice(-24));
-    }, 110);
+    }, 280);
     return () => clearInterval(timer);
   }, [statsRef]);
 
@@ -173,7 +173,7 @@ export function DashMapVisualizer() {
         <span className="font-barlow text-[0.56rem] tracking-[0.28em] uppercase text-cream/45">
           Rust DashMap Live Cam
         </span>
-        <span className="font-courier text-[0.55rem] text-cream/30">~1,200 TPS simulated · readable mode</span>
+        <span className="font-courier text-[0.55rem] text-cream/30">~320 TPS simulated · presentation mode</span>
       </div>
 
       <div className="px-4 pt-4 pb-3">
