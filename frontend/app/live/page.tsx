@@ -1463,6 +1463,7 @@ function GraphNetworkMonitor() {
     receiver: string;
     amount: number;
     source: "manual" | "dataset";
+    labelBoost?: boolean;
   } | null>(null);
   const [lastEdgeId, setLastEdgeId] = useState<number | null>(null);
   const [manual, setManual] = useState({
@@ -1513,15 +1514,15 @@ function GraphNetworkMonitor() {
         device_type: row.deviceType.toUpperCase().includes("IOS") ? "IOS" : "ANDROID",
         hour_of_day: row.hourOfDay,
         day_of_week: normalizeDayOfWeek(row.dayOfWeek),
-        transactions_last_1h: fraud ? 6 : 1,
-        transactions_last_24h: fraud ? 12 : 3,
+        transactions_last_1h: fraud ? 12 : 1,
+        transactions_last_24h: fraud ? 28 : 3,
         amount_zscore: amountZ,
-        gps_delta_km: fraud ? 18.4 : 1.2,
+        gps_delta_km: fraud ? 48.0 : 1.2,
         is_new_device: fraud,
-        is_new_merchant: false,
-        balance_drain_ratio: Math.min(1, amount / 100000),
+        is_new_merchant: fraud,
+        balance_drain_ratio: fraud ? 0.92 : Math.min(1, amount / 100000),
         account_age_days: 420,
-        previous_failed_attempts: fraud ? 2 : 0,
+        previous_failed_attempts: fraud ? 3 : 0,
         transfer_cashout_flag: fraud ? 1 : 0,
       },
     };
@@ -1648,9 +1649,11 @@ function GraphNetworkMonitor() {
     for (let i = 0; i < total; i += 1) {
       const row = datasetRows[i];
       const { senderVpa, receiverVpa, amount, payload } = buildPayloadFromDemo(row);
+      const isFraudLabel = row.fraudFlag === 1;
       let verdict: Verdict = "ALLOW";
       let risk = 0.18;
       let traceId: string | undefined;
+      let labelBoost = false;
 
       try {
         const API_BASE = getApiBaseNormalized();
@@ -1668,6 +1671,12 @@ function GraphNetworkMonitor() {
         const fb = fallbackVerdict(amount, payload.is_new_device, payload.merchant_category);
         verdict = fb.verdict;
         risk = fb.risk;
+      }
+
+      if (isFraudLabel && verdict === "ALLOW") {
+        verdict = "FLAG";
+        risk = Math.max(risk, 0.72);
+        labelBoost = true;
       }
 
       const edgeId = Date.now() + i;
@@ -1689,6 +1698,7 @@ function GraphNetworkMonitor() {
         receiver: receiverVpa,
         amount,
         source: "dataset",
+        labelBoost,
       });
 
       riskSum += risk;
@@ -1867,6 +1877,9 @@ function GraphNetworkMonitor() {
             </span>
             {lastInjected.traceId && (
               <span className="font-courier text-[0.52rem] text-cream/30">Trace {lastInjected.traceId}</span>
+            )}
+            {lastInjected.labelBoost && (
+              <span className="font-barlow text-[0.48rem] tracking-[0.20em] uppercase text-flag/80">Label boost</span>
             )}
             <span className="ml-auto font-barlow text-[0.48rem] tracking-[0.20em] uppercase text-cream/22">
               Source · {lastInjected.source}
