@@ -257,12 +257,15 @@ impl PolicyConfig {
             .and_then(|v| v.parse().ok())
             .unwrap_or(60u64);
 
-        // Railway assigns a runtime PORT for public ingress. Prefer it when present
-        // to avoid edge routing mismatches with a hardcoded bind port.
-        let bind_addr = std::env::var("PORT")
+        // Prefer an explicitly configured bind address first.
+        // If absent, fall back to Railway PORT when present.
+        let bind_addr = std::env::var("VARAKSHA_BIND_ADDR")
             .ok()
-            .map(|p| format!("0.0.0.0:{}", p.trim()))
-            .or_else(|| std::env::var("VARAKSHA_BIND_ADDR").ok())
+            .or_else(|| {
+                std::env::var("PORT")
+                    .ok()
+                    .map(|p| format!("0.0.0.0:{}", p.trim()))
+            })
             .unwrap_or_else(|| {
                 if is_production {
                     "0.0.0.0:8080".to_string()
